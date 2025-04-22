@@ -1,0 +1,155 @@
+[versions]
+agp = "8.8.0"
+kotlin = "2.0.0"
+coreKtx = "1.15.0"
+junit = "4.13.2"
+junitVersion = "1.2.1"
+espressoCore = "3.6.1"
+lifecycleRuntimeKtx = "2.8.7"
+activityCompose = "1.10.0"
+composeBom = "2024.04.01"
+
+activity-ktx = "1.8.1"
+adapter = "3.0.14"
+android-auto-size = "v1.2.1"
+androidx-test-ext-junit = "1.1.5"
+appcompat = "1.6.1"
+autodispose = "2.2.1"
+autodispose-android = "2.2.1"
+autodispose-androidx-lifecycle = "2.2.1"
+autodispose-lifecycle = "2.2.1"
+brv = "1.5.2"
+cardview = "1.0.0"
+circleimageview = "3.1.0"
+fragment-ktx = "1.6.2"
+glide = "4.15.1"
+jackson = "2.14.3"
+jackson-compat = "2.14.3"
+ksp = "1.9.21-1.0.15"
+lifecycle-livedata-ktx = "2.6.2"
+lifecycle-viewmodel-ktx = "2.6.2"
+live-event-bus = "1.8.14"
+material = "1.10.0"
+material-spinner = "1.3.1"
+mmkv = "1.3.0"
+okhttp = "4.11.0"
+pdf-viewer = "1.0.7"
+pictureselector = "v3.11.1"
+powerspinner = "1.1.9"
+recyclerview = "1.3.2"
+refresh-header-classics = "2.0.6"
+refresh-layout-kernel = "2.0.6"
+retrofit = "2.9.0"
+room-version = "2.6.1"
+rxandroid = "3.0.2"
+rxbinding = "4.0.0"
+rxjava = "3.1.8"
+rxkotlin = "3.0.1"
+smartmaterialspinner = "1.5.0"
+status-bar = "2.0.5"
+sweet-dialog = "1.1.3"
+tbssdk = "44286"
+the-router = "1.2.1"
+wumingtech-base = "1.3.0"
+wumingtech-inspection = "1.2.0"
+x-popup = "2.9.19"
+libsignal-client = "0.65.2"
+protobuf-gradle-plugin = "0.9.0"
+
+
+[libraries]
+androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+junit = { group = "junit", name = "junit", version.ref = "junit" }
+androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
+androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
+androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
+androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
+androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
+androidx-ui = { group = "androidx.compose.ui", name = "ui" }
+androidx-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
+androidx-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
+androidx-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
+androidx-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
+androidx-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
+androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
+
+activity-ktx = {group = "androidx.activity", name = "activity-ktx", version.ref = "activity-ktx" }
+adapter = {group = "io.github.cymchad", name = "BaseRecyclerViewAdapterHelper", version.ref = "adapter" }
+android-auto-size = {group = "com.github.JessYanCoding", name = "AndroidAutoSize", version.ref = "android-auto-size" }
+androidx-test-ext-junit = {group = "androidx.test.ext", name = "junit", version.ref = "androidx-test-ext-junit" }
+appcompat = {group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
+autodispose = {group = "com.uber.autodispose2", name = "autodispose", version.ref = "autodispose" }
+autodispose-android = {group = "com.uber.autodispose2", name = "autodispose-android", version.ref = "autodispose-android" }
+autodispose-androidx-lifecycle = {group = "com.uber.autodispose2", name = "autodispose-androidx-lifecycle", version.ref = "autodispose-androidx-lifecycle" }
+autodispose-lifecycle = {group = "com.uber.autodispose2", name = "autodispose-lifecycle", version.ref = "autodispose-lifecycle" }
+brv = {group = "com.github.liangjingkanji", name = "BRV", version.ref = "brv" }
+cardview = {group = "androidx.cardview", name = "cardview", version.ref = "cardview" }
+circleimageview = {group = "de.hdodenhof", name = "circleimageview", version.ref = "circleimageview" }
+
+fragment-ktx = {group = "androidx.fragment", name = "fragment-ktx", version.ref = "fragment-ktx" }
+glide = {group = "com.github.bumptech.glide", name = "glide", version.ref = "glide" }
+glide-compiler = {group = "com.github.bumptech.glide", name = "ksp", version.ref = "glide" }
+jackson-core = {group = "com.fasterxml.jackson.core", name = "jackson-core", version.ref = "jackson" }
+jackson-core-compat = {group = "com.fasterxml.jackson.core", name = "jackson-core", version.ref = "jackson-compat" }
+jackson-databind = {group = "com.fasterxml.jackson.core", name = "jackson-databind", version.ref = "jackson" }
+jackson-databind-compat = {group = "com.fasterxml.jackson.core", name = "jackson-databind", version.ref = "jackson-compat" }
+jackson-annotations = {group = "com.fasterxml.jackson.core", name = "jackson-annotations", version.ref = "jackson" }
+jackson-module-kotlin = {group = "com.fasterxml.jackson.module", name = "jackson-module-kotlin", version.ref = "jackson" }
+jackson-module-kotlin-compat = {group = "com.fasterxml.jackson.module", name = "jackson-module-kotlin", version.ref = "jackson-compat" }
+kotlin-stblib = {group = "org.jetbrains.kotlin", name = "kotlin-stdlib", version.ref = "kotlin" }
+lifecycle-livedata-ktx = {group = "androidx.lifecycle", name = "lifecycle-livedata-ktx", version.ref = "lifecycle-livedata-ktx" }
+lifecycle-viewmodel-ktx = {group = "androidx.lifecycle", name = "lifecycle-viewmodel-ktx", version.ref = "lifecycle-viewmodel-ktx" }
+live-event-bus = {group = "com.github.michaellee123", name = "LiveEventBus", version.ref = "live-event-bus" }
+material = {group = "com.google.android.material", name = "material", version.ref = "material" }
+material-spinner = {group = "com.jaredrummler", name = "material-spinner", version.ref = "material-spinner" }
+mmkv = {group = "com.tencent", name = "mmkv", version.ref = "mmkv" }
+okhttp = {group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
+okhttp-logging-interceptor = {group = "com.squareup.okhttp3", name = "logging-interceptor", version.ref = "okhttp" }
+pdf-viewer = {group = "com.lonelypluto", name = "pdf-viewer", version.ref = "pdf-viewer" }
+pictureselector = {group = "io.github.lucksiege", name = "pictureselector", version.ref = "pictureselector" }
+powerspinner = {group = "com.github.skydoves", name = "powerspinner", version.ref = "powerspinner" }
+recyclerview = {group = "androidx.recyclerview", name = "recyclerview", version.ref = "recyclerview" }
+refresh-header-classics = {group = "io.github.scwang90", name = "refresh-header-classics", version.ref = "refresh-header-classics" }
+refresh-layout-kernel = {group = "io.github.scwang90", name = "refresh-layout-kernel", version.ref = "refresh-layout-kernel" }
+retrofit = {group = "com.squareup.retrofit2", name = "retrofit", version.ref = "retrofit" }
+retrofit-adapter-rxjava3 = {group = "com.squareup.retrofit2", name = "adapter-rxjava3", version.ref = "retrofit" }
+room-compiler = {group = "androidx.room", name = "room-compiler", version.ref = "room-version" }
+room-ktx = {group = "androidx.room", name = "room-ktx", version.ref = "room-version" }
+room-runtime = {group = "androidx.room", name = "room-runtime", version.ref = "room-version" }
+room-rxjava3 = {group = "androidx.room", name = "room-rxjava3", version.ref = "room-version" }
+rxandroid = {group = "io.reactivex.rxjava3", name = "rxandroid", version.ref = "rxandroid" }
+rxbinding = {group = "com.jakewharton.rxbinding4", name = "rxbinding", version.ref = "rxbinding" }
+rxbinding-appcompat = {group = "com.jakewharton.rxbinding4", name = "rxbinding-appcompat", version.ref = "rxbinding" }
+rxbinding-core = {group = "com.jakewharton.rxbinding4", name = "rxbinding-core", version.ref = "rxbinding" }
+rxbinding-material = {group = "com.jakewharton.rxbinding4", name = "rxbinding-material", version.ref = "rxbinding" }
+rxjava = {group = "io.reactivex.rxjava3", name = "rxjava", version.ref = "rxjava" }
+rxkotlin = {group = "io.reactivex.rxjava3", name = "rxkotlin", version.ref = "rxkotlin" }
+smartmaterialspinner = {group = "com.github.chivorns", name = "smartmaterialspinner", version.ref = "smartmaterialspinner" }
+status-bar = {group = "com.github.liangjingkanji", name = "StatusBar", version.ref = "status-bar" }
+sweet-dialog = {group = "com.github.ruinszero", name = "sweet-dialog", version.ref = "sweet-dialog" }
+tbssdk = {group = "com.tencent.tbs", name = "tbssdk", version.ref = "tbssdk" }
+the-router = {group = "cn.therouter", name = "router", version.ref = "the-router" }
+the-router-compile = {group = "cn.therouter", name = "apt", version.ref = "the-router" }
+#wumingtech-base = {group = "com.wumingtech", name = "base", version.ref = "wumingtech-base" }
+#wumingtech-inspection = {group = "com.wumingtech", name = "inspection", version.ref = "wumingtech-inspection" }
+x-popup = {group = "com.github.li-xiaojun", name = "XPopup", version.ref = "x-popup" }
+
+
+# 1st Party
+libsignal-client = { module = "org.signal:libsignal-client", version.ref = "libsignal-client" }
+libsignal-android = { module = "org.signal:libsignal-android", version.ref = "libsignal-client" }
+protobuf-gradle-plugin = { module = "com.google.protobuf:protobuf-gradle-plugin", version.ref = "protobuf-gradle-plugin" }
+signal-aesgcmprovider = "org.signal:aesgcmprovider:0.0.3"
+signal-ringrtc = "org.signal:ringrtc-android:2.49.2"
+signal-android-database-sqlcipher = "org.signal:sqlcipher-android:4.6.0-S1"
+
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+ksp = {id = "com.google.devtools.ksp", version.ref = "ksp" }
+com-android-library = {id = "com.android.library", version.ref = "agp" }
+kotlin-parcelize = {id = "org.jetbrains.kotlin.plugin.parcelize", version.ref = "kotlin" }
+org-jetbrains-kotlin-android = {id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+
