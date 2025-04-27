@@ -8,7 +8,7 @@ import java.util.Date
 
 
 /**
- * 好有
+ * 用户表
  */
 @Entity(tableName = "im_user")
 class User(
