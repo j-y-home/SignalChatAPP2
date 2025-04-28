@@ -1,9 +1,11 @@
 package com.example.endtoendencryptionsystem.entiy.database
 
+import android.os.Parcelable
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.fasterxml.jackson.annotation.JsonFormat
+import kotlinx.parcelize.Parcelize
 import java.util.Date
 
 
@@ -11,6 +13,7 @@ import java.util.Date
  * 私聊消息
  */
 @Entity(tableName = "im_group_message")
+@Parcelize
 class GroupMessage(
     /**
      * id
@@ -74,4 +77,4 @@ class GroupMessage(
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     var sendTime: Date?,
 
-)
+) : Parcelable

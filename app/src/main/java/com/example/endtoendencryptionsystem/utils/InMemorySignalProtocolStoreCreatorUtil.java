@@ -25,7 +25,7 @@ import lombok.experimental.UtilityClass;
 public class InMemorySignalProtocolStoreCreatorUtil {
     @SneakyThrows
     @RequiresApi(api=Build.VERSION_CODES.O)
-    public SignalProtocolStore createStore(StoreMaker storeMaker){
+    public static SignalProtocolStore createStore(StoreMaker storeMaker){
         byte[] decodedIdentityKey=Base64.getDecoder().decode(storeMaker.getStoreIdentityKey());
         ECPublicKey publicKey= null;
         try {

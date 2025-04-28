@@ -1,10 +1,12 @@
 package com.example.endtoendencryptionsystem.entiy.database
 
 import android.graphics.ColorSpace.Model
+import android.os.Parcelable
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.fasterxml.jackson.annotation.JsonFormat
+import kotlinx.parcelize.Parcelize
 import java.util.Date
 
 
@@ -12,6 +14,7 @@ import java.util.Date
  * 群成员
  */
 @Entity(tableName = "im_group_member")
+@Parcelize
 class GroupMember(
     /**
      * id
@@ -71,7 +74,7 @@ class GroupMember(
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     var quitTime: Date?,
 
-){
+) : Parcelable {
     fun getShowNickName(): String {
         return remarkNickName ?: userNickName ?: ""
     }

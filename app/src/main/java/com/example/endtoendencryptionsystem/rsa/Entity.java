@@ -1,12 +1,15 @@
 package com.example.endtoendencryptionsystem.rsa;
 
 
+import android.content.SharedPreferences;
 import android.os.Build;
 
 import androidx.annotation.RequiresApi;
 
 
+import com.alibaba.fastjson.JSONObject;
 import com.example.endtoendencryptionsystem.model.KeyPairsMaker;
+import com.tencent.mmkv.MMKV;
 
 import org.whispersystems.libsignal.IdentityKey;
 import org.whispersystems.libsignal.IdentityKeyPair;
@@ -96,8 +99,9 @@ public class Entity {
         KeyPairsMaker keyPairsMaker=new KeyPairsMaker(preKeyPairPrivateKey,
                 signedPrivateKey,timestamp );
         /**
-         * 6.1 TODO 上传到数据库
+         * 6.1 TODO （私钥相关）保存到本地
          */
+        MMKV.defaultMMKV().encode("privates", JSONObject.toJSONString(keyPairsMaker));
       //  FirebaseDatabase.getInstance().getReference("privates").child(FirebaseAuth.getInstance().getCurrentUser().getUid()).setValue(keyPairsMaker);
         ECPublicKey signedPreKeyPublic = signedPreKeyPair.getPublicKey();
 

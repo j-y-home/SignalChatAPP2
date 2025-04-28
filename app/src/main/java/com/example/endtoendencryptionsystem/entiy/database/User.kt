@@ -1,9 +1,11 @@
 package com.example.endtoendencryptionsystem.entiy.database
 
+import android.os.Parcelable
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.fasterxml.jackson.annotation.JsonFormat
+import kotlinx.parcelize.Parcelize
 import java.util.Date
 
 
@@ -11,6 +13,7 @@ import java.util.Date
  * 用户表
  */
 @Entity(tableName = "im_user")
+@Parcelize
 class User(
     /**
      * id
@@ -77,4 +80,4 @@ class User(
      */
     var type: Int,
 
-)
+) : Parcelable

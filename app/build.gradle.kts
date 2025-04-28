@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
+    id("kotlin-parcelize")
 
 }
 //必须配置
@@ -101,7 +102,7 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.room.ktx)
     implementation(libs.room.runtime)
-    //ksp(libs.room.compiler)
+    ksp(libs.room.compiler)
 
 
     implementation(libs.jackson.core)

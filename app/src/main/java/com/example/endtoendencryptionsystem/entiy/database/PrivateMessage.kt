@@ -1,9 +1,11 @@
 package com.example.endtoendencryptionsystem.entiy.database
 
+import android.os.Parcelable
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.fasterxml.jackson.annotation.JsonFormat
+import kotlinx.parcelize.Parcelize
 import java.util.Date
 
 
@@ -11,6 +13,7 @@ import java.util.Date
  * 私聊消息
  */
 @Entity(tableName = "im_private_message")
+@Parcelize
 class PrivateMessage(
     /**
      * id
@@ -51,7 +54,7 @@ class PrivateMessage(
     var sendTime: Date?,
     //添加无参构造函数
 
-){
+) : Parcelable {
     // 添加无参构造函数
     constructor() : this(null, null, null, null, null, null, null)
 }
