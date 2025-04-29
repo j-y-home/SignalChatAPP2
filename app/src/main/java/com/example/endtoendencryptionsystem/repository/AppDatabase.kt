@@ -8,6 +8,7 @@ import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.example.endtoendencryptionsystem.entiy.dao.FriendsDao
+import com.example.endtoendencryptionsystem.entiy.dao.PrivateMessageDao
 import com.example.endtoendencryptionsystem.entiy.database.Friend
 import com.example.endtoendencryptionsystem.entiy.database.GroupMessage
 import com.example.endtoendencryptionsystem.entiy.database.PrivateMessage
@@ -15,10 +16,11 @@ import com.example.endtoendencryptionsystem.utils.Converters
 
 
 @Database(
-    entities = [Friend::class], version = 1, exportSchema = false)
+    entities = [Friend::class, PrivateMessage::class, GroupMessage::class], version = 1, exportSchema = false)
 @TypeConverters(value = [Converters::class])
 abstract class AppDatabase : RoomDatabase() {
     abstract fun friendDao(): FriendsDao
+    abstract fun privateMessageDao(): PrivateMessageDao
 
 
     companion object {

@@ -18,8 +18,8 @@ class PrivateMessage(
     /**
      * id
      */
-    @PrimaryKey
-    var id:Long?,
+    @PrimaryKey(autoGenerate = true)
+    var id:Long? = null,
     /**
      * 发送用户id
      */
@@ -38,23 +38,21 @@ class PrivateMessage(
     var content: String?,
 
     /**
-     * 消息类型 MessageType
+     * TODO 后期完善
+     * 消息类型 MessageType  0:文字 1:图片 2:文件 3:语音 4:视频 21:提示
      */
-    var type: Int? ,
+    var type: Int? = 0 ,
 
     /**
-     * 状态
+     * TODO 后期完善
+     * 状态 0:未读 1:已读 2:撤回 3:已读
      */
-    var status: Int? ,
+    var status: Int? = 1 ,
 
     /**
      * 发送时间
      */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     var sendTime: Date?,
-    //添加无参构造函数
 
-) : Parcelable {
-    // 添加无参构造函数
-    constructor() : this(null, null, null, null, null, null, null)
-}
+) : Parcelable

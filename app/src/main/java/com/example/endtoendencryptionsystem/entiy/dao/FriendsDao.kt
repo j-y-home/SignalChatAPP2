@@ -19,7 +19,7 @@ interface FriendsDao {
      * id:当前用户的id
      */
     @Query("select * from im_friend where friend_id=:id")
-    fun selectFriendsByFriendId(id: Int): Friend
+    fun selectFriendsByFriendId(id: Long): Friend
 
     /**
      * 添加好友

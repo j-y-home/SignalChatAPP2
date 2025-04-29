@@ -140,15 +140,13 @@ class MyNativeModule : UniModule() {
             val currentUserId = MMKV.defaultMMKV().decodeLong("currentUserId")
             Log.e("xxxx", "currentUserId：" + currentUserId)
             val friend = Friend(
-                -1,
-                currentUserId,
-                user.id!!.toLong(),
-                user.nickName,
-                user.headImage,
-                user.createdTime,
-                user.preKeyBundleMaker,
-                user.storeMaker
-            )
+                userId = currentUserId,
+                friendId = user.id!!.toLong(),
+                friendNickName = user.nickName,
+                friendHeadImage = user.headImage,
+                createdTime = user.createdTime,
+                preKeyBundleMaker = user.preKeyBundleMaker,
+                storeMaker = user.storeMaker)
             Log.e("xxxx", "Friend信息：" + JSONObject.toJSONString(friend))
             chatRepository.addFriend(friend)
             callback.invoke(true)
@@ -163,12 +161,16 @@ class MyNativeModule : UniModule() {
      * @param friendId
      * @return
      */
-    fun getFriendInfoById(friendId: Int): Friend {
+    fun getFriendInfoById(friendId: Long): Friend {
         val list: MutableList<Friend> = chatRepository.selectAllData() as MutableList<Friend>
         Log.e("xxxx", list.size.toString() + "数据库好友表全部数据：" + JSONObject.toJSONString(list))
         var friend: Friend? = null
+        Log.e("xxxx", "当前friendId"+friendId )
         friend = chatRepository.selectFriendsByFriendId(friendId)
-        Log.e("xxxx", "当前对话的好友信息：" + JSONObject.toJSONString(friend))
+        if(friend == null){
+            Log.e("xxxx", "当前对话的好友信息查不到" )
+        }
+        Log.e("xxxx", "当前对话的好友信息：" + json.toJSONString(friend))
         return friend
     }
 
@@ -196,7 +198,7 @@ class MyNativeModule : UniModule() {
         val bobPreKeyBundle: PreKeyBundle?
         val alicePreKeyBundle: PreKeyBundle?
         //1，根据receiverUid获取好友信息
-        val friend = getFriendInfoById(receiverUid.toInt())
+        val friend = getFriendInfoById(receiverUid.toLong())
         if (friend != null) {
             //2, 获取bobPreKeyBundle
             var bobPreKeyBundleMaker = checkNotNull(json.toObject<PreKeyBundleMaker>(friend.preKeyBundleMaker.toString()))
@@ -272,6 +274,14 @@ class MyNativeModule : UniModule() {
                     val toBobMessage = aliceToBobSession.encrypt(message)
                     signalCipherText = Base64.getEncoder().encodeToString(toBobMessage.serialize())
                     Log.e("xxxx", "一系列算法加密后的消息：" + signalCipherText)
+                    insertPrivateMessage(PrivateMessage(sendId = MMKV.defaultMMKV().decodeLong("currentUserId"),
+                        recvId = receiverId.toLong(), content = message,sendTime = Date()))
+
+                    var list = chatRepository.getAllMsgFromFriend(MMKV.defaultMMKV().decodeLong("currentUserId").toInt(), receiverId.toInt())
+                    //遍历list
+                    for (i in list.indices) {
+                        Log.e("xxxx", "消息内容：" + list[i].content)
+                    }
                     callback.invoke(signalCipherText)
                 } else { //解密
                     val ds = Base64.getDecoder().decode(message)
@@ -287,6 +297,13 @@ class MyNativeModule : UniModule() {
                 Log.e("xxxx", "初始化Session失败：")
             }
         }
+    }
+
+    /**
+     * 新增一条私聊消息
+     */
+    fun insertPrivateMessage(privateMessage: PrivateMessage) {
+        chatRepository.insertPrivateMessage(privateMessage)
     }
 
 
@@ -314,22 +331,34 @@ class MyNativeModule : UniModule() {
     //    }
     /**
      * 读取本地数据库的消息:私聊
+     * uniapp的消息对话框显示Android数据库里的消息数据
+     * 现在uniapp的消息有两种来源
+     * 1，服务器数据库的历史消息表（后期没用，因为存到服务器的都是加密的）
+     * 2，websocket实时接收的消息
+     * 在发送者这边来说，是不需要解密，直接读取Android数据库里的明文消息即可
+     * 但是在接收者那边来说，需要解密，websocket收到消息，先解密再存到Android数据库中。
+     *
+     * 步骤：
+     * 1，发送者发送了消息， 同时存到Android数据库私聊消息表（先不考虑撤回的情况）
+     * 2，接收者收到消息，先解密，再存到Android数据库私聊消息表。
+     * 3，uniapp的对话框中显示显示，从Android数据库中读取
+     *
      */
     @UniJSMethod(uiThread = false)
     fun readLocalPrivateMsg(callback: UniJSCallback) {
         Log.e("xxxx", "获取Android数据库消息")
-        val list: MutableList<PrivateMessage?> = ArrayList<PrivateMessage?>()
-        for (i in 0..4) {
-            val privateMessage = PrivateMessage()
-            privateMessage.id = i.toLong()
-            privateMessage.content = "这是第" + i + "条私聊消息"
-            privateMessage.sendTime = Date()
-            privateMessage.sendId = 1
-            privateMessage.recvId = 23
-            privateMessage.type = 0
-            privateMessage.status = 3
-            list.add(privateMessage)
-        }
-        callback.invoke(JSON.toJSON(list))
+//        val list: MutableList<PrivateMessage?> = ArrayList<PrivateMessage?>()
+//        for (i in 0..4) {
+//            val privateMessage = PrivateMessage()
+//            privateMessage.id = i.toLong()
+//            privateMessage.content = "这是第" + i + "条私聊消息"
+//            privateMessage.sendTime = Date()
+//            privateMessage.sendId = 1
+//            privateMessage.recvId = 23
+//            privateMessage.type = 0
+//            privateMessage.status = 3
+//            list.add(privateMessage)
+//        }
+        callback.invoke(null)
     }
 }
