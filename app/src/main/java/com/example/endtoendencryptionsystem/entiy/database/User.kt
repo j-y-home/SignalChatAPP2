@@ -41,7 +41,7 @@ class User(
     /**
      * 密码
      */
-    var password: String,
+    var password: String?,
     /**
      * 性别 0:男 1::女
      */
@@ -79,5 +79,16 @@ class User(
      * 账号类型 1:普通用户 2:wx小程序审核账户
      */
     var type: Int,
+
+    /**
+     * 预密钥
+     */
+    @ColumnInfo(name="pre_key_bundle_maker")
+    var preKeyBundleMaker: String?,
+    /**
+     * 另一个密钥
+     */
+    @ColumnInfo(name = "store_maker")
+    var storeMaker: String?
 
 ) : Parcelable

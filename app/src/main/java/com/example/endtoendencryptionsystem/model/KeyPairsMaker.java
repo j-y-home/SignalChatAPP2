@@ -1,12 +1,16 @@
 package com.example.endtoendencryptionsystem.model;
 
 
+import android.os.Parcelable;
 
+import java.io.Serializable;
 
-public class KeyPairsMaker {
+public class KeyPairsMaker implements Serializable {
     String preKeyPairPrivateKey;
     String signedPreKeySignaturePrivateKey;
     long timestamp;
+    public KeyPairsMaker() {
+    }
 
     public KeyPairsMaker(String preKeyPairPrivateKey, String signedPreKeySignaturePrivateKey, long timestamp) {
         this.preKeyPairPrivateKey = preKeyPairPrivateKey;

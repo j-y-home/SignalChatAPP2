@@ -29,4 +29,7 @@ interface FriendsDao {
      */
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun addFriend(friend: Friend)
+
+    @Query("select * from im_friend")
+    fun selectAllData():List<Friend>
 }

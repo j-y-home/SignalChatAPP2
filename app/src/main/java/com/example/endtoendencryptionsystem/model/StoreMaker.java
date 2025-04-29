@@ -11,6 +11,8 @@ public class StoreMaker {
     String storePrivateKey;
     int registrationId;
 
+    public StoreMaker() {
+    }
     public StoreMaker(String storeIdentityKey, String storePrivateKey, int registrationId) {
         this.storeIdentityKey = storeIdentityKey;
         this.storePrivateKey = storePrivateKey;

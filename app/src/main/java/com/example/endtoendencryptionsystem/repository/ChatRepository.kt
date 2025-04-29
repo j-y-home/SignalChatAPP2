@@ -28,4 +28,8 @@ class ChatRepository(val app: Application) {
         friendsDao.addFriend(friend)
     }
 
+    fun selectAllData():List<Friend>{
+        return friendsDao.selectAllData()
+    }
+
 }

@@ -12,6 +12,8 @@ public class PreKeyBundleMaker {
     String signedPreKeyPublic; //ECPublicKey
     String identityPreKeySignature; //byte []
     String identityKey;  //IdentityKey
+    public PreKeyBundleMaker() {
+    }
 
     public PreKeyBundleMaker(int registrationId, int deviceId, int preKeyId, String preKeyPublic, int signedPreKeyId, String signedPreKeyPublic, String identityPreKeySignature,String identityKey) {
         this.registrationId = registrationId;

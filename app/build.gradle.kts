@@ -117,6 +117,7 @@ dependencies {
 
     annotationProcessor("org.projectlombok:lombok:1.18.28")  // 确保使用最新版本
     implementation("org.projectlombok:lombok:1.18.28")
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.18.+")
 
 //    implementation(libs.libsignal.client)
 //    implementation(libs.libsignal.android)
