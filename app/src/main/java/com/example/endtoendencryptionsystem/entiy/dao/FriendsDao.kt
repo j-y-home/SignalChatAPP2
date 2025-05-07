@@ -32,4 +32,10 @@ interface FriendsDao {
 
     @Query("select * from im_friend")
     fun selectAllData():List<Friend>
+
+    /**
+     * 清空好友表
+     */
+    @Query("DELETE FROM im_friend")
+    fun deleteAllFriends()
 }

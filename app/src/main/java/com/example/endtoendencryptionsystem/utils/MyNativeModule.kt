@@ -4,6 +4,7 @@ import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
 import com.alibaba.fastjson.JSON
+import com.alibaba.fastjson.JSONArray
 import com.alibaba.fastjson.JSONObject
 import com.example.endtoendencryptionsystem.ETEApplication.Companion.getInstance
 import com.example.endtoendencryptionsystem.entiy.database.Friend
@@ -31,6 +32,8 @@ import org.whispersystems.libsignal.state.SignedPreKeyRecord
 import java.util.Base64
 import java.util.Date
 import java.util.Random
+import java.util.concurrent.Executor
+import java.util.concurrent.Executors
 
 
 /**
@@ -54,6 +57,8 @@ import java.util.Random
 class MyNativeModule : UniModule() {
     // 注册方法供 UniApp 调用（同步方法）
     private val chatRepository = ChatRepository(getInstance()!!)
+    private val executor: Executor = Executors.newSingleThreadExecutor()
+    private val TAG: String = "MyNativeModule"
 
     @UniJSMethod(uiThread = true)
     fun showToast(message: String?) {
@@ -306,6 +311,14 @@ class MyNativeModule : UniModule() {
         chatRepository.insertPrivateMessage(privateMessage)
     }
 
+    /**
+     * websokect收到消息后先解密，再插入到数据库
+     */
+    @UniJSMethod(uiThread = false)
+    fun insertPrivateMessage( callback: UniJSCallback) {
+
+    }
+
 
     //    /**
     //     *   初始化会话
@@ -329,6 +342,81 @@ class MyNativeModule : UniModule() {
     //        }
     //        callback.invoke(JSON.toJSON(list));
     //    }
+
+
+    /**
+     * 加载会话中的消息
+     */
+    fun getMessages(conversationId:Long,limit:Int,offset:Int,callback: UniJSCallback){
+
+    }
+
+    @UniJSMethod(uiThread = false)
+    fun saveChats(userId: String, chatsToSave: JSONArray) {
+        Log.e("xxx","调用saveChats方法：" + json.toJSONString(chatsToSave))
+        executor.execute(Runnable {
+            try {
+                val userIdLong = userId.toLong()
+                chatRepository.saveChats(userIdLong,chatsToSave)
+            } catch (e: java.lang.Exception) {
+                Log.e(TAG, "Error in saveChats", e)
+            }
+        })
+    }
+
+    @UniJSMethod(uiThread = false)
+    fun getAllChats(userId: String, callback: UniJSCallback) {
+        executor.execute({
+            try {
+                val userIdLong = userId.toLong()
+                val result = chatRepository.getAllChats(userIdLong)
+                Log.e("xxxx","获取到本地数据库消息："+json.toJSONString(result))
+                callback.invoke(result)
+            } catch (e: java.lang.Exception) {
+                Log.e(TAG, "Error in getAllChats", e)
+                callback.invoke(JSONObject())
+            }
+        })
+    }
+
+    @UniJSMethod(uiThread = false)
+    fun deleteChats(userId: String, chatsToDelete: JSONArray, callback: UniJSCallback) {
+        executor.execute(Runnable {
+            try {
+                val userIdLong = userId.toLong()
+                val success = chatRepository.deleteChats(userIdLong, chatsToDelete)
+                callback.invoke(success)
+            } catch (e: java.lang.Exception) {
+                Log.e(TAG, "Error in deleteChats", e)
+                callback.invoke(false)
+            }
+        })
+    }
+
+    @UniJSMethod(uiThread = false)
+    fun saveMetadata(userId: String, metadata: JSONObject) {
+        executor.execute(Runnable {
+            try {
+                val userIdLong = userId.toLong()
+                val success = chatRepository.saveMetadata(userIdLong, metadata)
+                Log.e(TAG, "saveMetadata success: $success")
+            } catch (e: java.lang.Exception) {
+                Log.e(TAG, "Error in saveMetadata", e)
+            }
+        })
+    }
+
+    @UniJSMethod(uiThread = false)
+    fun hasData(userId: String): Boolean {
+        try {
+            val userIdLong = userId.toLong()
+            return chatRepository.hasData(userIdLong)
+        } catch (e: java.lang.Exception) {
+            Log.e(TAG, "Error checking if data exists", e)
+            return false
+        }
+    }
+
     /**
      * 读取本地数据库的消息:私聊
      * uniapp的消息对话框显示Android数据库里的消息数据

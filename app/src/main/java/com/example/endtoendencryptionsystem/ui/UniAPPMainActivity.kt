@@ -8,10 +8,13 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.util.Log
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.example.endtoendencryptionsystem.ETEApplication.Companion.getInstance
 import com.example.endtoendencryptionsystem.databinding.ActivityUniappMainBinding
+import com.example.endtoendencryptionsystem.repository.ChatRepository
 import io.dcloud.feature.sdk.DCUniMPSDK
 import io.dcloud.feature.sdk.Interface.IOnUniMPEventCallBack
 import io.dcloud.feature.sdk.Interface.IUniMP
@@ -30,6 +33,7 @@ class UniAPPMainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityUniappMainBinding
     var mContext: Context? = null
     var mHandler: Handler? = null
+    private val chatRepository = ChatRepository(getInstance()!!)
 
     /** unimp小程序实例缓存 */
     var mUniMPCaches: HashMap<String, IUniMP> = HashMap()
@@ -56,33 +60,6 @@ class UniAPPMainActivity : AppCompatActivity() {
     }
 
     private fun initData() {
-//        if (Build.VERSION.SDK_INT >= 35) {
-//            val windowInsetsController = window.decorView.windowInsetsController
-//            val controller = if (windowInsetsController != null)
-//                WindowInsetsControllerCompat.toWindowInsetsControllerCompat(
-//                    windowInsetsController
-//                )
-//            else
-//                null
-//
-//            if (controller != null) {
-//                controller.isAppearanceLightStatusBars = true
-//                controller.isAppearanceLightNavigationBars = true
-//            }
-//        }
-//
-//
-//        //用来测试sdkDemo 胶囊×的点击事件，是否生效；lxl增加的
-//        DCUniMPSDK.getInstance().setCapsuleCloseButtonClickCallBack { appid ->
-//            Toast.makeText(mContext, "点击×号了", Toast.LENGTH_SHORT).show()
-//            if (mUniMPCaches.containsKey(appid)) {
-//                val mIUniMP = mUniMPCaches[appid]
-//                if (mIUniMP != null && mIUniMP.isRuning) {
-//                    mIUniMP.closeUniMP()
-//                    mUniMPCaches.remove(appid)
-//                }
-//            }
-//        }
 
         binding.btn.setOnClickListener {
             try {
@@ -96,8 +73,26 @@ class UniAPPMainActivity : AppCompatActivity() {
                 Log.e("xxxx","异常："+e.message)
                 e.printStackTrace()
             }
+        }
 
+        //清空好友表
+        binding.btn2.setOnClickListener {
+            Thread {
+                val bool = chatRepository.deleteAllFriends()
+                runOnUiThread {
+                    Toast.makeText(mContext, bool.toString(), Toast.LENGTH_SHORT).show()
+                }
+            }.start()
+        }
 
+        //清空消息表
+        binding.btn3.setOnClickListener {
+            Thread {
+                val bool = chatRepository.deleteAllChats()
+                runOnUiThread {
+                    Toast.makeText(mContext, bool.toString(), Toast.LENGTH_SHORT).show()
+                }
+            }.start()
         }
 
         DCUniMPSDK.getInstance().setOnUniMPEventCallBack(object : IOnUniMPEventCallBack {

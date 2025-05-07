@@ -16,6 +16,20 @@
         android:layout_marginTop="150dp"
         android:layout_gravity="center"
         android:layout_height="wrap_content"/>
+    <Button
+        android:id="@+id/btn2"
+        android:text="清空好友表"
+        android:layout_width="100dp"
+        android:layout_marginTop="20dp"
+        android:layout_gravity="center"
+        android:layout_height="wrap_content"/>
+    <Button
+        android:id="@+id/btn3"
+        android:text="清空消息表"
+        android:layout_width="100dp"
+        android:layout_marginTop="20dp"
+        android:layout_gravity="center"
+        android:layout_height="wrap_content"/>
     <WebView
         android:id="@+id/web"
         android:visibility="gone"

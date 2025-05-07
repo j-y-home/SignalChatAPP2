@@ -1,0 +1,148 @@
+package com.example.endtoendencryptionsystem.entiy.database;
+
+import androidx.room.Entity;
+import androidx.room.ForeignKey;  
+import androidx.room.Index;  
+import androidx.room.PrimaryKey;
+
+import org.jetbrains.annotations.Nullable;
+
+@Entity(  
+    tableName = "private_chat_message",  
+    foreignKeys = @ForeignKey(  
+        entity = ChatConversation.class,  
+        parentColumns = "id",  
+        childColumns = "conversationId",  
+        onDelete = ForeignKey.CASCADE  
+    ),  
+    indices = {  
+        @Index("conversationId"),  
+        @Index(value = "serverMsgId",unique = true),   // 设置唯一索引
+        @Index("sendTime")  
+    }  
+)  
+public class PrivateChatMessage {  
+    @PrimaryKey(autoGenerate = true)  
+    private long id;
+    //该字段可以为null
+    @Nullable
+    private long serverMsgId;
+    @Nullable
+    private String tmpId;
+    @Nullable
+    private long conversationId;
+    @Nullable
+    private long sendId;
+    @Nullable
+    private long recvId;
+    @Nullable
+    private String content;
+    @Nullable
+    private long sendTime;
+    @Nullable
+    private boolean selfSend;
+    @Nullable
+    private int type;
+    @Nullable
+    private int status;
+    @Nullable
+    private String loadStatus;
+
+    public long getId() {
+        return id;
+    }
+
+    public void setId(long id) {
+        this.id = id;
+    }
+
+    public long getServerMsgId() {
+        return serverMsgId;
+    }
+
+    public void setServerMsgId(long serverMsgId) {
+        this.serverMsgId = serverMsgId;
+    }
+
+    public String getTmpId() {
+        return tmpId;
+    }
+
+    public void setTmpId(String tmpId) {
+        this.tmpId = tmpId;
+    }
+
+    public long getConversationId() {
+        return conversationId;
+    }
+
+    public void setConversationId(long conversationId) {
+        this.conversationId = conversationId;
+    }
+
+    public long getSendId() {
+        return sendId;
+    }
+
+    public void setSendId(long sendId) {
+        this.sendId = sendId;
+    }
+
+    public long getRecvId() {
+        return recvId;
+    }
+
+    public void setRecvId(long recvId) {
+        this.recvId = recvId;
+    }
+
+    public String getContent() {
+        return content;
+    }
+
+    public void setContent(String content) {
+        this.content = content;
+    }
+
+    public long getSendTime() {
+        return sendTime;
+    }
+
+    public void setSendTime(long sendTime) {
+        this.sendTime = sendTime;
+    }
+
+    public boolean isSelfSend() {
+        return selfSend;
+    }
+
+    public void setSelfSend(boolean selfSend) {
+        this.selfSend = selfSend;
+    }
+
+    public int getType() {
+        return type;
+    }
+
+    public void setType(int type) {
+        this.type = type;
+    }
+
+    public int getStatus() {
+        return status;
+    }
+
+    public void setStatus(int status) {
+        this.status = status;
+    }
+
+    public String getLoadStatus() {
+        return loadStatus;
+    }
+
+    public void setLoadStatus(String loadStatus) {
+        this.loadStatus = loadStatus;
+    }
+    // Getters and setters
+    // ...  
+}
