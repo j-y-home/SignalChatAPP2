@@ -19,7 +19,7 @@ class User(
      * id
      */
     @PrimaryKey
-    var id:Long?,
+    var id:Long,
 
 
     /**

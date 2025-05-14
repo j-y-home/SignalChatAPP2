@@ -25,6 +25,9 @@ public interface GroupChatMessageDao {
     @Query("DELETE FROM group_chat_message WHERE conversationId = :conversationId")  
     void deleteMessagesForConversation(long conversationId);
 
+    @Query("DELETE FROM group_chat_message WHERE messageId = :messageId")
+    void deleteMessageById(String messageId);
+
     /**
      * 清空表
      */

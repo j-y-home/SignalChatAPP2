@@ -3,6 +3,7 @@ package com.example.endtoendencryptionsystem.entiy.database
 import android.os.Parcelable
 import androidx.room.ColumnInfo
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.example.endtoendencryptionsystem.model.PreKeyBundleMaker
 import com.example.endtoendencryptionsystem.model.StoreMaker
@@ -12,10 +13,10 @@ import java.util.Date
 
 
 /**
- * 好友
- * 应该是好友id作为主键吧？
+ * 好友表
+ * friendId不可重复
  */
-@Entity(tableName = "im_friend")
+@Entity(tableName = "im_friend",indices = [Index(value = ["friend_id"], unique = true)])
 @Parcelize
 class Friend(
     /**

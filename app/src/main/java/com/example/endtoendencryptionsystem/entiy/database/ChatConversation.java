@@ -1,5 +1,6 @@
 package com.example.endtoendencryptionsystem.entiy.database;
 
+import androidx.annotation.Nullable;
 import androidx.room.Entity;
 import androidx.room.Ignore;
 import androidx.room.Index;
@@ -30,7 +31,8 @@ public class ChatConversation {
     private int unreadCount;  
     private boolean atMe;  
     private boolean atAll;  
-    private long lastTimeTip;  
+    private long lastTimeTip;
+    @Nullable
     private String sendNickName;
     private boolean deleted;
     private boolean stored;

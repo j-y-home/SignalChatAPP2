@@ -60,11 +60,16 @@ class MyNativeModule : UniModule() {
     private val executor: Executor = Executors.newSingleThreadExecutor()
     private val TAG: String = "MyNativeModule"
 
-    @UniJSMethod(uiThread = true)
-    fun showToast(message: String?) {
-        // Toast.makeText(mContext, message, Toast.LENGTH_SHORT).show();
+    /**
+     * 存储当前登录的用户信息到sp
+     */
+    @UniJSMethod(uiThread = false)
+    fun storeUserInfoToSp(userInfo : String) {
+        Log.e(TAG, "当前登录用户信息:"+userInfo)
+        val currentUser:User = json.toObject(userInfo)
+        MMKV.defaultMMKV().encode("currentUserId",currentUser.id)
+        MMKV.defaultMMKV().encode("currentUser",currentUser)
     }
-
     /**
      * TODO  改到登录时获取密钥并上传到服务器
      * 因为注册时获取密钥并上传，逻辑会有问题：如果只是注册了，但是并未在该设备上登录（使用）
@@ -135,28 +140,28 @@ class MyNativeModule : UniModule() {
 
     /**
      * 添加好友
-     * 该方法获取到了好友信息，但它的数据结构是user表的结构，我如何把它存放到friend表中呢？
+     * 该方法获取到了好友信息，但它的数据结构是user表的结构,需要转换
      */
     @UniJSMethod(uiThread = false)
     fun addFriend(friendJson: String?, callback: UniJSCallback) {
-        Log.e("xxxx", "好友信息：" + friendJson)
+        Log.e(TAG, "接收到的好友信息：" + friendJson)
         try {
             var user = json.toObject<User>(friendJson.toString())
             val currentUserId = MMKV.defaultMMKV().decodeLong("currentUserId")
-            Log.e("xxxx", "currentUserId：" + currentUserId)
+            Log.e(TAG, "currentUserId：" + currentUserId)
             val friend = Friend(
                 userId = currentUserId,
-                friendId = user.id!!.toLong(),
+                friendId = user.id.toLong(),
                 friendNickName = user.nickName,
                 friendHeadImage = user.headImage,
                 createdTime = user.createdTime,
                 preKeyBundleMaker = user.preKeyBundleMaker,
                 storeMaker = user.storeMaker)
-            Log.e("xxxx", "Friend信息：" + JSONObject.toJSONString(friend))
+            Log.e(TAG, "要添加的Friend信息：" + JSONObject.toJSONString(friend))
             chatRepository.addFriend(friend)
             callback.invoke(true)
         } catch (ignored: Exception) {
-            Log.e("xxxx", "报错信息：" + ignored.message)
+            Log.e(TAG, "添加好友报错信息：" + ignored.message)
             callback.invoke(false)
         }
     }
@@ -168,14 +173,13 @@ class MyNativeModule : UniModule() {
      */
     fun getFriendInfoById(friendId: Long): Friend {
         val list: MutableList<Friend> = chatRepository.selectAllData() as MutableList<Friend>
-        Log.e("xxxx", list.size.toString() + "数据库好友表全部数据：" + JSONObject.toJSONString(list))
+        Log.e(TAG, list.size.toString() + "数据库好友表全部数据：" + JSONObject.toJSONString(list))
         var friend: Friend? = null
-        Log.e("xxxx", "当前friendId"+friendId )
         friend = chatRepository.selectFriendsByFriendId(friendId)
         if(friend == null){
-            Log.e("xxxx", "当前对话的好友信息查不到" )
+            Log.e(TAG, "当前对话的好友信息查不到" )
         }
-        Log.e("xxxx", "当前对话的好友信息：" + json.toJSONString(friend))
+        Log.e(TAG, "当前对话的好友信息：" + json.toJSONString(friend))
         return friend
     }
 
@@ -348,6 +352,56 @@ class MyNativeModule : UniModule() {
      * 加载会话中的消息
      */
     fun getMessages(conversationId:Long,limit:Int,offset:Int,callback: UniJSCallback){
+
+    }
+
+    /**
+     * 最新的设计：只保存最新一条收到的消息
+     */
+    @UniJSMethod(uiThread = false)
+    fun saveNewMessage(messageInfo:String,chatInfo:String,userId:String){
+        executor.execute(Runnable {
+            try {
+                val userIdLong = userId.toLong()
+                chatRepository.saveNewMessage(messageInfo,chatInfo,userIdLong)
+            } catch (e: java.lang.Exception) {
+                Log.e(TAG, "Error in saveNewMessage", e)
+            }
+        })
+    }
+
+    /**
+     * 删除消息：根据messageId
+     */
+    @UniJSMethod(uiThread = false)
+    fun deleteMessageByMessageId(messageId: String,type:String) {
+        executor.execute(Runnable {
+            try {
+                val success = chatRepository.deleteMessageByMessageId(messageId,type)
+                Log.e(TAG, "删除"+type+"消息："+success)
+            } catch (e: java.lang.Exception) {
+                Log.e(TAG, "删除"+type+"消息：失败 "+e)
+            }
+        })
+    }
+
+    /**
+     * TODO 后期再加
+     * 更新消息的已读未读状态
+     */
+    @UniJSMethod(uiThread = false)
+    fun updateMessageStatus(msgInfo : String, callback: UniJSCallback) {
+
+    }
+
+    /**
+     * 最新设计
+     * 加载消息
+     *
+     */
+    @UniJSMethod(uiThread = false)
+    fun loadMessage(){
+
 
     }
 

@@ -1,9 +1,13 @@
 package com.example.endtoendencryptionsystem.repository
 
 import android.app.Application
+import android.content.Context
+import android.content.SharedPreferences
 import android.util.Log
+import com.alibaba.fastjson.JSON
 import com.alibaba.fastjson.JSONArray
 import com.alibaba.fastjson.JSONObject
+import com.alibaba.fastjson.TypeReference
 import com.example.endtoendencryptionsystem.entiy.database.ChatConversation
 import com.example.endtoendencryptionsystem.entiy.database.ChatMetadata
 import com.example.endtoendencryptionsystem.entiy.database.Friend
@@ -11,7 +15,9 @@ import com.example.endtoendencryptionsystem.entiy.database.GroupChatMessage
 import com.example.endtoendencryptionsystem.entiy.database.PrivateChatMessage
 import com.example.endtoendencryptionsystem.entiy.database.PrivateMessage
 import com.example.endtoendencryptionsystem.utils.json
+import com.example.endtoendencryptionsystem.utils.toJSONString
 import com.example.endtoendencryptionsystem.utils.toObject
+import com.tencent.mmkv.MMKV
 
 
 class ChatRepository(val app: Application) {
@@ -56,6 +62,230 @@ class ChatRepository(val app: Application) {
         return privateMessageDao.getAllMsgFromFriend(userId,friendId)
     }
 
+    /**
+     * 最新的设计：只传入当前最新的消息，不传入整个会话。
+     * 保存单条消息到数据库
+     * @param messageJson 消息JSON字符串
+     * @param chatInfo 会话基本信息JSON字符串
+     * @param userId 当前用户ID
+     */
+    fun saveNewMessage(messageJson: String, chatInfoJson: String, userId: Long) {
+        try {
+            // 在事务中执行数据库操作
+            db.runInTransaction({
+                // 获取会话对象
+                val conversation: ChatConversation = json.toObject(chatInfoJson)
+                conversation.userId = userId
+                // 保存会话，获取会话ID
+                val conversationId: Long
+                val existingConversation: ChatConversation? = chatConversationDao.getConversation(
+                    userId, conversation.targetId, conversation.type)
+                if (existingConversation != null) {
+                    conversation.id = existingConversation.id
+                    chatConversationDao.updateConversation(conversation)
+                    conversationId = existingConversation.id
+                } else {
+                    conversationId = chatConversationDao.insertConversation(conversation)
+                }
+                // 保存单条消息
+                saveOneMessage(messageJson, conversationId, conversation.type)
+                // TODO 更新会话的最后消息信息
+              //  updateConversationLastMessage(conversation, jsonStringToMutableMap(messageJson),userId)
+              //  chatConversationDao.updateConversation(conversation)
+            })
+        } catch (e: java.lang.Exception) {
+            Log.e("ChatStorageManager", "Error saving message: " + e.message)
+        }
+    }
+
+
+    /**
+     * 保存单条消息到数据库
+     * @param messageMap 消息数据Map
+     * @param conversationId 会话ID
+     * @param type 会话类型 ("PRIVATE" 或 "GROUP")
+     */
+    private fun saveOneMessage(messageJson: String, conversationId: Long, type: String?) {
+        try {
+            // 根据会话类型选择不同的DAO
+            if ("PRIVATE" == type) {
+                var message = json.toObject<PrivateChatMessage>(messageJson)
+                // 跳过时间提示消息等特殊消息
+                if(message.type == 20){
+                    return
+                }
+                message.conversationId = conversationId
+                var existingMessage = privateChatMessageDao.getMessagesById(message.messageId)
+                Log.e("ChatStorageManager", "接收的消息: "+json.toJSONString(message))
+                if (existingMessage != null) {
+                    privateChatMessageDao.updateMessage(message)
+                    Log.d("ChatStorageManager", "Updated existing private message: " + existingMessage.messageId)
+                } else {
+
+                    val insertedId: Long = privateChatMessageDao.insertMessage(message)
+                    Log.d("ChatStorageManager", "Inserted new private message with ID: " + insertedId)
+                }
+            } else if ("GROUP" == type) {//TODO 待定
+//                var message = json.toObject<GroupChatMessage>(messageJson)
+//                // 跳过时间提示消息等特殊消息
+//                if(existingMessage.type == 20){
+//                    return
+//                }
+//                val groupMessageDao: GroupMessageDao = database.groupMessageDao()
+//
+//
+//                // 检查消息是否已存在
+//                val tmpId = messageMap.get("tmpId") as String?
+//                val idDouble = messageMap.get("id") as Double?
+//                val messageId = if (idDouble != null) idDouble.toLong() else 0
+//
+//                var existingMessage: GroupMessageEntity? = null
+//                if (messageId > 0) {
+//                    existingMessage = groupMessageDao.findById(messageId)
+//                } else if (tmpId != null && !tmpId.isEmpty()) {
+//                    existingMessage = groupMessageDao.findByTmpId(tmpId)
+//                }
+//
+//                if (existingMessage != null) {
+//                    // 更新现有消息
+//                    updateGroupMessage(existingMessage, messageMap)
+//                    groupMessageDao.update(existingMessage)
+//                    Log.d(
+//                        "ChatStorageManager",
+//                        "Updated existing group message: " + existingMessage.getId()
+//                    )
+//                } else {
+//                    // 创建新消息
+//                    val newMessage: GroupMessageEntity? =
+//                        createGroupMessage(messageMap, conversationId)
+//                    val insertedId: Long = groupMessageDao.insert(newMessage)
+//                    Log.d("ChatStorageManager", "Inserted new group message with ID: " + insertedId)
+//                }
+            }
+        } catch (e: java.lang.Exception) {
+            Log.e("ChatStorageManager", "Error saving message: " + e.message, e)
+        }
+    }
+
+    /**
+     * TODO 后期加
+     * 更新消息的已读未读状态
+     */
+    private fun updateMessageStatus(messageJson: String) {
+
+    }
+
+    /**
+     * 更新会话的最后消息信息
+     * @param conversation 会话实体
+     * @param messageMap 消息数据Map
+     */
+    private fun updateConversationLastMessage(
+        conversation: ChatConversation,
+        messageMap: MutableMap<String?, Any?>,userId: Long
+    ) {
+        // 获取消息类型
+        val typeDouble = messageMap.get("type") as Double?
+        val messageType = if (typeDouble != null) typeDouble.toInt() else 0
+
+        // 根据消息类型设置最后一条消息内容
+        when (messageType) {
+            1 -> conversation.setLastContent("[图片]")
+            2 -> conversation.setLastContent("[文件]")
+            3 -> conversation.setLastContent("[语音]")
+            31 -> conversation.setLastContent("[语音通话]")
+            32 -> conversation.setLastContent("[视频通话]")
+            0, 10, 21 -> conversation.setLastContent(messageMap.get("content") as String?)
+            else ->
+                // 其他类型消息，使用内容字段
+                conversation.setLastContent(messageMap.get("content") as String?)
+        }
+
+        // 更新最后发送时间
+        val sendTimeDouble = messageMap.get("sendTime") as Double?
+        if (sendTimeDouble != null) {
+            conversation.setLastSendTime(sendTimeDouble.toLong())
+        }
+
+        // 更新发送者昵称
+        val sendNickName = messageMap.get("sendNickName") as String?
+        if (sendNickName != null) {
+            conversation.setSendNickName(sendNickName)
+        }
+
+        // 更新未读消息计数
+        val selfSend = messageMap.getOrDefault("selfSend", false) as Boolean?
+        val statusDouble = messageMap.get("status") as Double?
+        val status = if (statusDouble != null) statusDouble.toInt() else 0
+
+        // 如果不是自己发送的消息，且消息状态不是已读和撤回，且不是提示类消息，则未读数+1
+        if (!selfSend!! && status != 3 /* MESSAGE_STATUS.READED */ && status != 4 /* MESSAGE_STATUS.RECALL */ && messageType != 21 /* MESSAGE_TYPE.TIP_TEXT */) {
+            conversation.setUnreadCount(conversation.getUnreadCount() + 1)
+        }
+
+        // 处理@我和@所有人的情况（仅群聊）
+        if (!selfSend && "GROUP" == conversation.getType() && status != 3 /* MESSAGE_STATUS.READED */) {
+            // 获取当前用户ID
+            val atUserIdsObj = messageMap.get("atUserIds")
+            if (atUserIdsObj is MutableList<*>) {
+                val atUserIds = atUserIdsObj as MutableList<Any?>
+                // 获取当前用户ID（这里需要从外部传入或从其他地方获取）
+                val currentUserId = userId
+                // 检查是否@我
+                for (userIdObj in atUserIds) {
+                    if (userIdObj is Double) {
+                        val userIdDouble = userIdObj
+                        val userId = userIdDouble.toLong()
+
+                        if (userId == currentUserId) {
+                            conversation.setAtMe(true)
+                            break
+                        } else if (userId == -1L) { // -1 表示@所有人
+                            conversation.setAtAll(true)
+                            break
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * 加载会话消息
+     * @param type 会话类型
+     * @param targetId 目标ID
+     * @param limit 消息数量限制
+     * @param offset 偏移量（用于分页）
+     */
+    fun loadMessages(userId: Long,type: String?, targetId: Long, limit: Int, offset: Int): String? {
+        try {
+            val conversation: ChatConversation? =
+                chatConversationDao.getConversation(userId,targetId,type)
+            if (conversation == null) {
+                return "[]"
+            }
+
+            val messages: MutableList<Any?> = ArrayList<Any?>()
+            if ("PRIVATE" == type) {
+                val privateMessages: MutableList<PrivateChatMessage?> =
+                        privateChatMessageDao.getMessagesForConversation(conversation.getId(), offset,limit)
+                for (msg in privateMessages) {
+                    messages.add(msg)
+                }
+            } else if ("GROUP" == type) {
+                // 类似处理群聊消息...
+                val groupChatMessages: MutableList<GroupChatMessage?> =
+                    groupChatMessageDao.getMessagesForConversation(conversation.getId(), offset,limit)
+                for (msg in groupChatMessages) {
+                    messages.add(msg)
+                }
+            }
+            return json.toJSONString(messages)
+        } catch (e: java.lang.Exception) {
+            Log.e("ChatStorageManager", "Error loading messages: " + e.message)
+            return "[]"
+        }
+    }
 
     /**
      * 保存会话
@@ -119,8 +349,8 @@ class ChatRepository(val app: Application) {
             val message: PrivateChatMessage = PrivateChatMessage()
             message.conversationId = conversationId
             // 处理可能缺失的字段
-            if (msgJson.containsKey("id")) {
-                message.serverMsgId = msgJson.getLong("id")
+            if (msgJson.containsKey("messageId")) {
+                message.messageId = msgJson.getString("messageId")
             }
             if (msgJson.containsKey("tmpId")) {
                 message.tmpId = msgJson.getString("tmpId")
@@ -160,8 +390,8 @@ class ChatRepository(val app: Application) {
             val message: GroupChatMessage = GroupChatMessage()
             message.setConversationId(conversationId)
             // 处理可能缺失的字段
-            if (msgJson.containsKey("id")) {
-                message.setServerMsgId(msgJson.getLong("id"))
+            if (msgJson.containsKey("messageId")) {
+                message.setMessageId(msgJson.getString("messageId"))
             }
 
             if (msgJson.containsKey("tmpId")) {
@@ -234,7 +464,26 @@ class ChatRepository(val app: Application) {
     }
 
     /**
-     * 获取所有会话
+     * 保存聊天索引信息
+     */
+    fun saveChatIndex(chatsDataJson: String?, userId: Long) {
+        try {
+            MMKV.defaultMMKV().encode("chats-app-" + userId,chatsDataJson)
+        } catch (e: java.lang.Exception) {
+            Log.e("ChatStorageManager", "Error saving chat index: " + e.message)
+        }
+    }
+
+    /**
+     * 加载聊天索引信息
+     */
+    fun loadChatIndex(userId: Long): String? {
+        return MMKV.defaultMMKV().decodeString("chats-app-" + userId)
+    }
+
+    /**
+     * 初始时，获取所有会话
+     * 加载前20条消息
      */
     fun getAllChats(userId: Long): JSONObject {
         try {
@@ -250,43 +499,23 @@ class ChatRepository(val app: Application) {
             // 获取所有会话
             val conversations: MutableList<ChatConversation> =
                 chatConversationDao.getAllConversations(userId)
-       //     val chatList: MutableList<ChatConversation> = ArrayList<ChatConversation>()
-
             // 为每个会话加载消息
             for (conversation in conversations) {
-//                val chatJson = JSONObject()
-//                chatJson.put("type", conversation.getType())
-//                chatJson.put("targetId", conversation.getTargetId())
-//                chatJson.put("showName", conversation.getShowName())
-//                chatJson.put("headImage", conversation.getHeadImage())
-//                chatJson.put("lastContent", conversation.getLastContent())
-//                chatJson.put("lastSendTime", conversation.getLastSendTime())
-//                chatJson.put("unreadCount", conversation.getUnreadCount())
-//                chatJson.put("atMe", conversation.isAtMe())
-//                chatJson.put("atAll", conversation.isAtAll())
-//                chatJson.put("lastTimeTip", conversation.getLastTimeTip())
-//                chatJson.put("sendNickName", conversation.getSendNickName())
-//                chatJson.put("stored", true) // 标记为已存储
                 conversation.isStored = true
-
-                val messagesArray = JSONArray()
-
                 // 根据会话类型加载不同类型的消息
                 if ("PRIVATE" == conversation.getType()) {
                     val messages: MutableList<PrivateChatMessage?> =
-                        privateChatMessageDao.getMessagesForConversation(conversation.getId(), 0, 3000)
+                        privateChatMessageDao.getMessagesForConversation(conversation.getId(), 0, 20)
                     for (message in messages) {
                         conversation.messages.add(message)
                     }
                 } else if ("GROUP" == conversation.getType()) {
                     val messages: MutableList<GroupChatMessage?> =
-                        groupChatMessageDao.getMessagesForConversation(conversation.getId(), 0, 3000)
+                        groupChatMessageDao.getMessagesForConversation(conversation.getId(), 0, 20)
                     for (message in messages) {
                         conversation.messages.add(message)
                     }
                 }
-
-            //    chatList.add(conversation)
             }
 
             // 构建返回数据
@@ -301,6 +530,24 @@ class ChatRepository(val app: Application) {
         }
     }
 
+    /**
+     * 删除消息
+     */
+    fun deleteMessageByMessageId(messageId: String,type :String): Boolean {
+        try {
+            db.runInTransaction({
+                if("PRIVATE" == type){
+                    privateChatMessageDao.deleteMessageById(messageId)
+                }else{
+                    groupChatMessageDao.deleteMessageById(messageId)
+                }
+            })
+            return true
+        } catch (e: java.lang.Exception) {
+            Log.e("xxx", "Error in deleteMessage", e)
+            return false
+        }
+    }
     /**
      * 删除会话
      */
@@ -374,6 +621,14 @@ class ChatRepository(val app: Application) {
             Log.e("xxx", "Error in deleteAllFriends", e)
             return false
         }
+    }
+
+    fun jsonStringToMutableMap(jsonString: String): MutableMap<String?, Any?> {
+        // 使用Fastjson解析为Map<String?, Any?>
+        val map: Map<String?, Any?> = JSON.parseObject(jsonString, object : TypeReference<Map<String?, Any?>?>() {}.type)
+        // 将不可变Map转换为可变Map
+        return map.toMutableMap()
+
     }
 
 }

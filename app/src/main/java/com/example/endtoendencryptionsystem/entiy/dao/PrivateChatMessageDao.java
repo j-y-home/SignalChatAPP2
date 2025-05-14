@@ -15,7 +15,11 @@ import java.util.List;
 public interface PrivateChatMessageDao {  
     @Query("SELECT * FROM private_chat_message WHERE conversationId = :conversationId ORDER BY sendTime ASC LIMIT :limit OFFSET :offset")
     List<PrivateChatMessage> getMessagesForConversation(long conversationId, int offset, int limit);
-      
+
+
+    @Query("SELECT * FROM private_chat_message WHERE messageId = :id")
+    PrivateChatMessage getMessagesById(String id);
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)  
     long insertMessage(PrivateChatMessage message);  
       
@@ -24,6 +28,9 @@ public interface PrivateChatMessageDao {
       
     @Query("DELETE FROM private_chat_message WHERE conversationId = :conversationId")  
     void deleteMessagesForConversation(long conversationId);
+
+    @Query("DELETE FROM private_chat_message WHERE messageId = :messageId")
+    void deleteMessageById(String messageId);
 
     /**
      * 清空表

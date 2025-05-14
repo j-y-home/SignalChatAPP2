@@ -1,5 +1,6 @@
 package com.example.endtoendencryptionsystem.entiy.database;
 
+import androidx.annotation.NonNull;
 import androidx.room.Entity;
 import androidx.room.ForeignKey;  
 import androidx.room.Index;  
@@ -16,16 +17,15 @@ import org.jetbrains.annotations.Nullable;
         onDelete = ForeignKey.CASCADE  
     ),  
     indices = {  
-        @Index("conversationId"),  
-        @Index("serverMsgId"),  
+        @Index("conversationId"),
         @Index("sendTime")  
     }  
 )  
-public class GroupChatMessage {  
-    @PrimaryKey(autoGenerate = true)  
-    private long id;
-    @Nullable
-    private long serverMsgId;
+public class GroupChatMessage {
+    @PrimaryKey
+    @NonNull
+    private String messageId;
+
     @Nullable
     private String tmpId;
     @Nullable
@@ -57,20 +57,13 @@ public class GroupChatMessage {
     @Nullable
     private boolean receiptOk;
 
-    public long getId() {
-        return id;
+    @NonNull
+    public String getMessageId() {
+        return messageId;
     }
 
-    public void setId(long id) {
-        this.id = id;
-    }
-
-    public long getServerMsgId() {
-        return serverMsgId;
-    }
-
-    public void setServerMsgId(long serverMsgId) {
-        this.serverMsgId = serverMsgId;
+    public void setMessageId(@NonNull String messageId) {
+        this.messageId = messageId;
     }
 
     public String getTmpId() {

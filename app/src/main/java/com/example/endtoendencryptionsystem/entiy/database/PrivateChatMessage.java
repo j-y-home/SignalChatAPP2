@@ -1,10 +1,12 @@
 package com.example.endtoendencryptionsystem.entiy.database;
 
+import androidx.annotation.NonNull;
 import androidx.room.Entity;
 import androidx.room.ForeignKey;  
 import androidx.room.Index;  
 import androidx.room.PrimaryKey;
 
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 @Entity(  
@@ -16,17 +18,14 @@ import org.jetbrains.annotations.Nullable;
         onDelete = ForeignKey.CASCADE  
     ),  
     indices = {  
-        @Index("conversationId"),  
-        @Index(value = "serverMsgId",unique = true),   // 设置唯一索引
+        @Index("conversationId"),
         @Index("sendTime")  
     }  
 )  
-public class PrivateChatMessage {  
-    @PrimaryKey(autoGenerate = true)  
-    private long id;
-    //该字段可以为null
-    @Nullable
-    private long serverMsgId;
+public class PrivateChatMessage {
+    @PrimaryKey
+    @NonNull
+    private String messageId;
     @Nullable
     private String tmpId;
     @Nullable
@@ -48,20 +47,12 @@ public class PrivateChatMessage {
     @Nullable
     private String loadStatus;
 
-    public long getId() {
-        return id;
+    public String getMessageId() {
+        return messageId;
     }
 
-    public void setId(long id) {
-        this.id = id;
-    }
-
-    public long getServerMsgId() {
-        return serverMsgId;
-    }
-
-    public void setServerMsgId(long serverMsgId) {
-        this.serverMsgId = serverMsgId;
+    public void setMessageId(String messageId) {
+        this.messageId = messageId;
     }
 
     public String getTmpId() {
