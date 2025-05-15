@@ -38,12 +38,12 @@ class Friend(
      * 用户昵称
      */
     @ColumnInfo(name = "friend_nick_name")
-    var friendNickName: String,
+    var friendNickName: String?,
     /**
      * 用户头像
      */
     @ColumnInfo(name = "friend_head_image")
-    var friendHeadImage: String,
+    var friendHeadImage: String?,
 
     /**
      * 创建时间

@@ -33,4 +33,18 @@ public interface GroupChatMessageDao {
      */
     @Query("DELETE FROM group_chat_message")
     void deleteAllChats();
+
+    /**
+     * 根据chatId删除消息
+     * @param chatId
+     */
+    @Query("DELETE FROM group_chat_message WHERE conversationId = :chatId")
+    void deleteMessagesByChatId(long chatId);
+
+    /**
+     * 如果拿不到chatId，就用这个方法
+     * @param targetId
+     */
+    @Query("DELETE FROM group_chat_message WHERE groupId = :targetId")
+    void deleteMessagesByUserIdAndTargetId(long targetId);
 }

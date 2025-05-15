@@ -14,6 +14,7 @@ import com.example.endtoendencryptionsystem.entiy.database.Friend
 import com.example.endtoendencryptionsystem.entiy.database.GroupChatMessage
 import com.example.endtoendencryptionsystem.entiy.database.PrivateChatMessage
 import com.example.endtoendencryptionsystem.entiy.database.PrivateMessage
+import com.example.endtoendencryptionsystem.enums.MessageStatus
 import com.example.endtoendencryptionsystem.utils.json
 import com.example.endtoendencryptionsystem.utils.toJSONString
 import com.example.endtoendencryptionsystem.utils.toObject
@@ -29,7 +30,7 @@ class ChatRepository(val app: Application) {
     private val chatConversationDao = db.chatConversationDao()
     private val privateChatMessageDao = db.privateChatMessageDao()
     private val groupChatMessageDao = db.groupChatMessageDao()
-
+    private val TAG: String = "ChatRepository"
     /**
      * 获取当前用户的所有好友
      * id:当前用户的id
@@ -176,77 +177,58 @@ class ChatRepository(val app: Application) {
     }
 
     /**
-     * 更新会话的最后消息信息
+     * 更新会话
      * @param conversation 会话实体
      * @param messageMap 消息数据Map
      */
-    private fun updateConversationLastMessage(
-        conversation: ChatConversation,
-        messageMap: MutableMap<String?, Any?>,userId: Long
-    ) {
-        // 获取消息类型
-        val typeDouble = messageMap.get("type") as Double?
-        val messageType = if (typeDouble != null) typeDouble.toInt() else 0
+    fun updateChat(conversation: ChatConversation) {
+        chatConversationDao.updateConversation(conversation)
+    }
 
-        // 根据消息类型设置最后一条消息内容
-        when (messageType) {
-            1 -> conversation.setLastContent("[图片]")
-            2 -> conversation.setLastContent("[文件]")
-            3 -> conversation.setLastContent("[语音]")
-            31 -> conversation.setLastContent("[语音通话]")
-            32 -> conversation.setLastContent("[视频通话]")
-            0, 10, 21 -> conversation.setLastContent(messageMap.get("content") as String?)
-            else ->
-                // 其他类型消息，使用内容字段
-                conversation.setLastContent(messageMap.get("content") as String?)
+    /**
+     * 更新消息已读状态
+     * @param conversation 会话实体
+     * @param messageMap 消息数据Map
+     */
+    fun updateMessageReadStatus(messageIds: ArrayList<String>) : Boolean {
+        return try {
+            db.runInTransaction {
+                // 1. 更新私聊消息表中的消息状态
+                privateChatMessageDao.updateMessagesReadStatus(messageIds, MessageStatus.READED.code)
+                // 2. 更新会话表中的未读计数和@提醒状态  TODO 需要吗？
+//                chatSessionDao.resetUnreadCount(userId, friendId, "PRIVATE")
+            }
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to update messages read status", e)
+            false
         }
+    }
 
-        // 更新最后发送时间
-        val sendTimeDouble = messageMap.get("sendTime") as Double?
-        if (sendTimeDouble != null) {
-            conversation.setLastSendTime(sendTimeDouble.toLong())
-        }
 
-        // 更新发送者昵称
-        val sendNickName = messageMap.get("sendNickName") as String?
-        if (sendNickName != null) {
-            conversation.setSendNickName(sendNickName)
-        }
+        /**
+     * 删除会话
+     * @param conversation 会话实体
+     * @param messageMap 消息数据Map
+     */
+    fun deleteChat(chatId:Long, chatType: String): Boolean {
+        return try {
+            // 使用事务确保原子性操作
+            db.runInTransaction {
+                // 1. 删除会话
+                chatConversationDao.deleteConversationById(chatId)
 
-        // 更新未读消息计数
-        val selfSend = messageMap.getOrDefault("selfSend", false) as Boolean?
-        val statusDouble = messageMap.get("status") as Double?
-        val status = if (statusDouble != null) statusDouble.toInt() else 0
-
-        // 如果不是自己发送的消息，且消息状态不是已读和撤回，且不是提示类消息，则未读数+1
-        if (!selfSend!! && status != 3 /* MESSAGE_STATUS.READED */ && status != 4 /* MESSAGE_STATUS.RECALL */ && messageType != 21 /* MESSAGE_TYPE.TIP_TEXT */) {
-            conversation.setUnreadCount(conversation.getUnreadCount() + 1)
-        }
-
-        // 处理@我和@所有人的情况（仅群聊）
-        if (!selfSend && "GROUP" == conversation.getType() && status != 3 /* MESSAGE_STATUS.READED */) {
-            // 获取当前用户ID
-            val atUserIdsObj = messageMap.get("atUserIds")
-            if (atUserIdsObj is MutableList<*>) {
-                val atUserIds = atUserIdsObj as MutableList<Any?>
-                // 获取当前用户ID（这里需要从外部传入或从其他地方获取）
-                val currentUserId = userId
-                // 检查是否@我
-                for (userIdObj in atUserIds) {
-                    if (userIdObj is Double) {
-                        val userIdDouble = userIdObj
-                        val userId = userIdDouble.toLong()
-
-                        if (userId == currentUserId) {
-                            conversation.setAtMe(true)
-                            break
-                        } else if (userId == -1L) { // -1 表示@所有人
-                            conversation.setAtAll(true)
-                            break
-                        }
-                    }
+                // 2. 删除关联的消息
+                if (chatType == "PRIVATE") {
+                    privateChatMessageDao.deleteMessagesByChatId(chatId)
+                } else if (chatType == "GROUP") {
+                    groupChatMessageDao.deleteMessagesByChatId(chatId)
                 }
             }
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to delete chat and messages", e)
+            false
         }
     }
 

@@ -32,4 +32,10 @@ public interface ChatConversationDao {
      */
     @Query("DELETE FROM chat_conversation")
     void deleteAll();
+
+    @Query("DELETE FROM chat_conversation WHERE userId = :userId AND targetId = :targetId AND type = :type")
+    void deleteConversation(long userId, long targetId, String type);
+
+    @Query("DELETE FROM chat_conversation WHERE id = :id")
+    void deleteConversationById(long id);
 }

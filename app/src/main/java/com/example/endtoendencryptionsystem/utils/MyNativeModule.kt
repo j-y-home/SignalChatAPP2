@@ -7,6 +7,7 @@ import com.alibaba.fastjson.JSON
 import com.alibaba.fastjson.JSONArray
 import com.alibaba.fastjson.JSONObject
 import com.example.endtoendencryptionsystem.ETEApplication.Companion.getInstance
+import com.example.endtoendencryptionsystem.entiy.database.ChatConversation
 import com.example.endtoendencryptionsystem.entiy.database.Friend
 import com.example.endtoendencryptionsystem.entiy.database.PrivateMessage
 import com.example.endtoendencryptionsystem.entiy.database.User
@@ -53,6 +54,17 @@ import java.util.concurrent.Executors
  *
  * 最主要的是消息表，肯定是要存Android数据库的，因为服务器存的是加密的，存了也没用。
  *
+ *
+ * TODO 5.15:加好友、发消息、存消息、获取消息、删除会话及其关联消息、更新会话、更新消息已读状态、删除消息（有bug）已走通。
+ * TODO 待处理bug0：加好友有bug，A加B，如果B不在线，那么就收不到websocket的消息，就无法在B的设备上存储好友信息。
+ * 解决：从接口获取到好友信息后，调用下addFriend方法？
+ * TODO 待处理bug1 ：删除了会话，websocket又发送了消息，导致数据库中又插入了已删除的数据。
+ * TODO 待处理bug2 ：删除消息，数据库中删除了，但是UI页面未删除。
+ * TODO 待处理问题1：除了主动发送的消息，其他消息如何添加messageId（比如：”你们已经成为好友啦“）
+ * TODO 待处理问题2：图片，文件在数据库中如何存储。
+ * TODO 待处理问题3：加密部分
+ * TODO 待处理问题4：群聊
+ * TODO 待处理问题5：撤回消息
  */
 class MyNativeModule : UniModule() {
     // 注册方法供 UniApp 调用（同步方法）
@@ -261,7 +273,7 @@ class MyNativeModule : UniModule() {
     }
 
     /**
-     * //TODO 加密解密先放在一个方法里
+     * 加密解密先放在一个方法里
      * encrypt 1:加密，0：解密
      * 带回调的加密解密方法
      * message 待加密消息
@@ -316,46 +328,6 @@ class MyNativeModule : UniModule() {
     }
 
     /**
-     * websokect收到消息后先解密，再插入到数据库
-     */
-    @UniJSMethod(uiThread = false)
-    fun insertPrivateMessage( callback: UniJSCallback) {
-
-    }
-
-
-    //    /**
-    //     *   初始化会话
-    //     *   1，获取B的相关密钥
-    //     *   2，验证签名
-    //     *   3，初始化会话并通过X3DH生成共享密钥
-    //     */
-    //    @UniJSMethod(uiThread = false)
-    //    public void initializeSession(String preKeyBundle,UniJSCallback callback) {
-    //        Log.e("xxxx","初始化会话模块");
-    //        PreKeyBundleMaker preKeyBundleMaker = JSON.parseObject(preKeyBundle, PreKeyBundleMaker.class);
-    //        //2， 验证签名
-    //        boolean isValid = Curve.verifySignature(
-    //                preKeyBundleMaker.getIdentityKey().getPublicKey(),
-    //                preKeyBundleMaker.getSignedPreKeyPublic().serialize(),
-    //                preKeyBundleMaker.getIdentityPreKeySignature()
-    //        );
-    //
-    //        if (!isValid) {
-    //            throw new SecurityException("签名验证失败，密钥可能被篡改！");
-    //        }
-    //        callback.invoke(JSON.toJSON(list));
-    //    }
-
-
-    /**
-     * 加载会话中的消息
-     */
-    fun getMessages(conversationId:Long,limit:Int,offset:Int,callback: UniJSCallback){
-
-    }
-
-    /**
      * 最新的设计：只保存最新一条收到的消息
      */
     @UniJSMethod(uiThread = false)
@@ -366,6 +338,48 @@ class MyNativeModule : UniModule() {
                 chatRepository.saveNewMessage(messageInfo,chatInfo,userIdLong)
             } catch (e: java.lang.Exception) {
                 Log.e(TAG, "Error in saveNewMessage", e)
+            }
+        })
+    }
+
+    /**
+     * 更新会话
+     */
+    @UniJSMethod(uiThread = false)
+    fun updateChat(chatInfo: ChatConversation){
+        executor.execute(Runnable {
+            try {
+                chatRepository.updateChat(chatInfo)
+            } catch (e: java.lang.Exception) {
+                Log.e(TAG, "Error in updateChat", e)
+            }
+        })
+    }
+
+    /**
+     * 更新消息已读状态
+     */
+    @UniJSMethod(uiThread = false)
+    fun updateMessageReadStatus(messageIds: ArrayList<String>){
+        executor.execute(Runnable {
+            try {
+                chatRepository.updateMessageReadStatus(messageIds)
+            } catch (e: java.lang.Exception) {
+                Log.e(TAG, "Error in updateChat", e)
+            }
+        })
+    }
+
+    /**
+     * 删除会话及其关联的消息
+     */
+    @UniJSMethod(uiThread = false)
+    fun deleteChat(chatId: Long,chatType: String){
+        executor.execute(Runnable {
+            try {
+                chatRepository.deleteChat(chatId,chatType)
+            } catch (e: java.lang.Exception) {
+                Log.e(TAG, "Error in updateChat", e)
             }
         })
     }
@@ -385,25 +399,7 @@ class MyNativeModule : UniModule() {
         })
     }
 
-    /**
-     * TODO 后期再加
-     * 更新消息的已读未读状态
-     */
-    @UniJSMethod(uiThread = false)
-    fun updateMessageStatus(msgInfo : String, callback: UniJSCallback) {
 
-    }
-
-    /**
-     * 最新设计
-     * 加载消息
-     *
-     */
-    @UniJSMethod(uiThread = false)
-    fun loadMessage(){
-
-
-    }
 
     @UniJSMethod(uiThread = false)
     fun saveChats(userId: String, chatsToSave: JSONArray) {
@@ -424,7 +420,7 @@ class MyNativeModule : UniModule() {
             try {
                 val userIdLong = userId.toLong()
                 val result = chatRepository.getAllChats(userIdLong)
-                Log.e("xxxx","获取到本地数据库消息："+json.toJSONString(result))
+                Log.e(TAG,"获取到本地数据库消息："+json.toJSONString(result))
                 callback.invoke(result)
             } catch (e: java.lang.Exception) {
                 Log.e(TAG, "Error in getAllChats", e)
@@ -471,36 +467,5 @@ class MyNativeModule : UniModule() {
         }
     }
 
-    /**
-     * 读取本地数据库的消息:私聊
-     * uniapp的消息对话框显示Android数据库里的消息数据
-     * 现在uniapp的消息有两种来源
-     * 1，服务器数据库的历史消息表（后期没用，因为存到服务器的都是加密的）
-     * 2，websocket实时接收的消息
-     * 在发送者这边来说，是不需要解密，直接读取Android数据库里的明文消息即可
-     * 但是在接收者那边来说，需要解密，websocket收到消息，先解密再存到Android数据库中。
-     *
-     * 步骤：
-     * 1，发送者发送了消息， 同时存到Android数据库私聊消息表（先不考虑撤回的情况）
-     * 2，接收者收到消息，先解密，再存到Android数据库私聊消息表。
-     * 3，uniapp的对话框中显示显示，从Android数据库中读取
-     *
-     */
-    @UniJSMethod(uiThread = false)
-    fun readLocalPrivateMsg(callback: UniJSCallback) {
-        Log.e("xxxx", "获取Android数据库消息")
-//        val list: MutableList<PrivateMessage?> = ArrayList<PrivateMessage?>()
-//        for (i in 0..4) {
-//            val privateMessage = PrivateMessage()
-//            privateMessage.id = i.toLong()
-//            privateMessage.content = "这是第" + i + "条私聊消息"
-//            privateMessage.sendTime = Date()
-//            privateMessage.sendId = 1
-//            privateMessage.recvId = 23
-//            privateMessage.type = 0
-//            privateMessage.status = 3
-//            list.add(privateMessage)
-//        }
-        callback.invoke(null)
-    }
+
 }

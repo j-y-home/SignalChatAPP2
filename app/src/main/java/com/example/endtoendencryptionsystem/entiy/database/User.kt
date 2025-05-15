@@ -26,17 +26,17 @@ class User(
      * 用户昵称
      */
     @ColumnInfo(name = "nick_name")
-    var nickName: String,
+    var nickName: String?,
     /**
      * 用户头像
      */
     @ColumnInfo(name = "head_image")
-    var headImage: String,
+    var headImage: String?,
     /**
      * 头像缩略图
      */
     @ColumnInfo(name = "head_image_thumb")
-    var headImageThumb: String,
+    var headImageThumb: String?,
 
     /**
      * 密码
@@ -78,7 +78,7 @@ class User(
     /**
      * 账号类型 1:普通用户 2:wx小程序审核账户
      */
-    var type: Int,
+    var type: Int?,
 
     /**
      * 预密钥
