@@ -12,16 +12,21 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.example.endtoendencryptionsystem.ETEApplication
 import com.example.endtoendencryptionsystem.ETEApplication.Companion.getInstance
 import com.example.endtoendencryptionsystem.databinding.ActivityUniappMainBinding
 import com.example.endtoendencryptionsystem.repository.ChatRepository
+import com.example.endtoendencryptionsystem.utils.json
+import com.example.endtoendencryptionsystem.utils.toJSONString
+import io.dcloud.common.DHInterface.ICallBack
 import io.dcloud.feature.sdk.DCUniMPSDK
 import io.dcloud.feature.sdk.Interface.IOnUniMPEventCallBack
 import io.dcloud.feature.sdk.Interface.IUniMP
 import io.dcloud.feature.unimp.DCUniMPJSCallback
 import io.dcloud.feature.unimp.config.UniMPOpenConfiguration
-import org.whispersystems.libsignal.IdentityKey
-import org.whispersystems.libsignal.util.KeyHelper
+import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
 
 
 /**
@@ -59,19 +64,52 @@ class UniAPPMainActivity : AppCompatActivity() {
         initData()
     }
 
+    private fun startUniapp(id:String,wgtPath:String){
+        DCUniMPSDK.getInstance().releaseWgtToRunPathFromePath(id, wgtPath, object : ICallBack {
+            override fun onCallBack(code: Int, pArgs: Any?): Any? {
+                if (code == 1) { //释放wgt完成
+                    try {
+                        var iUniMP = DCUniMPSDK.getInstance().openUniMP(mContext, id)
+                    } catch (e: java.lang.Exception) {
+                        e.printStackTrace()
+                        Log.e("xxx","异常："+e.message)
+                    }
+                } else { //释放wgt失败
+                    Toast.makeText(ETEApplication.getInstance(), "启动失败，请重试", Toast.LENGTH_SHORT).show()
+                }
+                return null
+            }
+        })
+    }
+
+    fun copyWgtFromAssetsToInternalStorage(context: Context, assetPath: String): String? {
+        val targetDir = File(context.filesDir, "wgt")
+        if (!targetDir.exists()) targetDir.mkdirs()
+        val targetFile = File(targetDir, "__UNI__EF861E1.wgt")
+
+        try {
+            context.assets.open(assetPath).use { inputStream ->
+                FileOutputStream(targetFile).use { outputStream ->
+                    inputStream.copyTo(outputStream)
+                }
+            }
+            return targetFile.absolutePath
+        } catch (e: IOException) {
+            Log.e("TAG", "复制 wgt 文件失败: ${e.message}")
+            return null
+        }
+    }
+
+
     private fun initData() {
+        // 调用示例
+        val wgtAssetPath = "apps/wgt/__UNI__EF861E1.wgt"  // assets 内相对路径
+        val internalWgtPath = copyWgtFromAssetsToInternalStorage(ETEApplication.getInstance()!!, wgtAssetPath)
 
         binding.btn.setOnClickListener {
-            try {
-                val uniMPOpenConfiguration = UniMPOpenConfiguration()
-//                uniMPOpenConfiguration.splashClass = MySplashView::class.java
-//                uniMPOpenConfiguration.extraData.put("darkmode", "light")
-                val uniMP = DCUniMPSDK.getInstance()
-                    .openUniMP(mContext, "__UNI__EF861E1", uniMPOpenConfiguration)
-                mUniMPCaches[uniMP.appid] = uniMP
-            } catch (e: Exception) {
-                Log.e("xxxx","异常："+e.message)
-                e.printStackTrace()
+            if (internalWgtPath != null) {
+                Log.e("xxxx","path:"+internalWgtPath)
+                startUniapp("__UNI__EF861E1",  internalWgtPath)
             }
         }
 

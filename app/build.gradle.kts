@@ -22,7 +22,7 @@ android {
     defaultConfig {
         applicationId = "com.example.endtoendencryptionsystem"
         minSdk = 24
-        targetSdk = 30
+        targetSdk = 28
         versionCode = 1
         versionName = "1.0"
         ndk {
