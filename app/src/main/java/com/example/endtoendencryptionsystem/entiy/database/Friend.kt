@@ -23,7 +23,7 @@ class Friend(
      * id
      */
     @PrimaryKey(autoGenerate = true)
-    var id:Int?=null,
+    var id:Int= -1,
     /**
      * 用户id
      */

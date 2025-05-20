@@ -11,6 +11,7 @@ import com.alibaba.fastjson.TypeReference
 import com.example.endtoendencryptionsystem.entiy.database.ChatConversation
 import com.example.endtoendencryptionsystem.entiy.database.ChatMetadata
 import com.example.endtoendencryptionsystem.entiy.database.Friend
+import com.example.endtoendencryptionsystem.entiy.database.Group
 import com.example.endtoendencryptionsystem.entiy.database.GroupChatMessage
 import com.example.endtoendencryptionsystem.entiy.database.PrivateChatMessage
 import com.example.endtoendencryptionsystem.entiy.database.PrivateMessage
@@ -30,6 +31,7 @@ class ChatRepository(val app: Application) {
     private val chatConversationDao = db.chatConversationDao()
     private val privateChatMessageDao = db.privateChatMessageDao()
     private val groupChatMessageDao = db.groupChatMessageDao()
+    private val groupDao = db.groupDao()
     private val TAG: String = "ChatRepository"
     /**
      * 获取当前用户的所有好友
@@ -101,7 +103,7 @@ class ChatRepository(val app: Application) {
 
 
     /**
-     * 保存单条消息到数据库
+     * 保存最新消息到数据库私聊或者群聊表
      * @param messageMap 消息数据Map
      * @param conversationId 会话ID
      * @param type 会话类型 ("PRIVATE" 或 "GROUP")
@@ -116,65 +118,54 @@ class ChatRepository(val app: Application) {
                     return
                 }
                 message.conversationId = conversationId
+                //处理有些消息的messageId为空的情况
+                val msgJson = JSONObject.parseObject(messageJson)
+                if(message.messageId.isNullOrEmpty()){
+                    message.messageId = msgJson.getString("id")?:""
+                }
                 var existingMessage = privateChatMessageDao.getMessagesById(message.messageId)
-                Log.e("ChatStorageManager", "接收的消息: "+json.toJSONString(message))
                 if (existingMessage != null) {
                     privateChatMessageDao.updateMessage(message)
-                    Log.d("ChatStorageManager", "Updated existing private message: " + existingMessage.messageId)
                 } else {
-
                     val insertedId: Long = privateChatMessageDao.insertMessage(message)
-                    Log.d("ChatStorageManager", "Inserted new private message with ID: " + insertedId)
                 }
-            } else if ("GROUP" == type) {//TODO 待定
-//                var message = json.toObject<GroupChatMessage>(messageJson)
-//                // 跳过时间提示消息等特殊消息
-//                if(existingMessage.type == 20){
-//                    return
-//                }
-//                val groupMessageDao: GroupMessageDao = database.groupMessageDao()
-//
-//
-//                // 检查消息是否已存在
-//                val tmpId = messageMap.get("tmpId") as String?
-//                val idDouble = messageMap.get("id") as Double?
-//                val messageId = if (idDouble != null) idDouble.toLong() else 0
-//
-//                var existingMessage: GroupMessageEntity? = null
-//                if (messageId > 0) {
-//                    existingMessage = groupMessageDao.findById(messageId)
-//                } else if (tmpId != null && !tmpId.isEmpty()) {
-//                    existingMessage = groupMessageDao.findByTmpId(tmpId)
-//                }
-//
-//                if (existingMessage != null) {
-//                    // 更新现有消息
-//                    updateGroupMessage(existingMessage, messageMap)
-//                    groupMessageDao.update(existingMessage)
-//                    Log.d(
-//                        "ChatStorageManager",
-//                        "Updated existing group message: " + existingMessage.getId()
-//                    )
-//                } else {
-//                    // 创建新消息
-//                    val newMessage: GroupMessageEntity? =
-//                        createGroupMessage(messageMap, conversationId)
-//                    val insertedId: Long = groupMessageDao.insert(newMessage)
-//                    Log.d("ChatStorageManager", "Inserted new group message with ID: " + insertedId)
-//                }
+            } else if ("GROUP" == type) {
+                val msgJson = JSONObject.parseObject(messageJson)
+                // 处理 @用户ID
+                if (msgJson.containsKey("atUserIds")) {
+                    val atUserIds = msgJson.getJSONArray("atUserIds")
+                    val atUserIdsStr = StringBuilder()
+                    for (k in atUserIds.indices) {
+                        if (k > 0) {
+                            atUserIdsStr.append(",")
+                        }
+                        atUserIdsStr.append(atUserIds.getLong(k))
+                    }
+                    msgJson.put("atUserIds",atUserIdsStr.toString())
+                }
+                var message = msgJson.toJavaObject(GroupChatMessage::class.java)
+                // 跳过时间提示消息等特殊消息
+                if(message.type == 20){
+                    return
+                }
+                message.conversationId = conversationId
+                //处理有些消息的messageId为空的情况
+                if(message.messageId.isEmpty()){
+                    message.messageId = JSONObject.parseObject(messageJson).getString("id")?:""
+                }
+                Log.e(TAG ,"@的用户："+message.atUserIds)
+                var existingMessage = groupChatMessageDao.getMessagesById(message.messageId)
+                if (existingMessage != null) {
+                    groupChatMessageDao.updateMessage(message)
+                } else {
+                    val insertedId: Long = groupChatMessageDao.insertMessage(message)
+                }
             }
         } catch (e: java.lang.Exception) {
-            Log.e("ChatStorageManager", "Error saving message: " + e.message, e)
+            Log.e(TAG, "Error saving message: " + e.message, e)
         }
     }
 
-    /**
-     * TODO 后期加
-     * 更新消息的已读未读状态
-     */
-    private fun updateMessageStatus(messageJson: String) {
-
-    }
 
     /**
      * 更新会话
@@ -370,54 +361,54 @@ class ChatRepository(val app: Application) {
         for (j in messagesArray.indices) {
             val msgJson = messagesArray.getJSONObject(j)
             val message: GroupChatMessage = GroupChatMessage()
-            message.setConversationId(conversationId)
+            message.conversationId = conversationId
             // 处理可能缺失的字段
             if (msgJson.containsKey("messageId")) {
-                message.setMessageId(msgJson.getString("messageId"))
+                message.messageId = msgJson.getString("messageId")
             }
 
             if (msgJson.containsKey("tmpId")) {
-                message.setTmpId(msgJson.getString("tmpId"))
+                message.tmpId = msgJson.getString("tmpId")
             }
 
             if (msgJson.containsKey("sendId")) {
-                message.setSendId(msgJson.getLong("sendId"))
+                message.sendId = msgJson.getLong("sendId")
             }
 
             if (msgJson.containsKey("groupId")) {
-                message.setGroupId(msgJson.getLong("groupId"))
+                message.groupId = msgJson.getLong("groupId")
             }
 
             if (msgJson.containsKey("content")) {
-                message.setContent(msgJson.getString("content"))
+                message.content = msgJson.getString("content")
             }
 
             if (msgJson.containsKey("sendTime")) {
-                message.setSendTime(msgJson.getLong("sendTime"))
+                message.sendTime = msgJson.getLong("sendTime")
             }
 
             if (msgJson.containsKey("selfSend")) {
-                message.setSelfSend(msgJson.getBooleanValue("selfSend"))
+                message.isSelfSend = msgJson.getBooleanValue("selfSend")
             }
 
             if (msgJson.containsKey("type")) {
-                message.setType(msgJson.getIntValue("type"))
+                message.type = msgJson.getIntValue("type")
             }
 
             if (msgJson.containsKey("status")) {
-                message.setStatus(msgJson.getIntValue("status"))
+                message.status = msgJson.getIntValue("status")
             }
 
             if (msgJson.containsKey("readedCount")) {
-                message.setReadedCount(msgJson.getIntValue("readedCount"))
+                message.readedCount = msgJson.getIntValue("readedCount")
             }
 
             if (msgJson.containsKey("loadStatus")) {
-                message.setLoadStatus(msgJson.getString("loadStatus"))
+                message.loadStatus = msgJson.getString("loadStatus")
             }
 
             if (msgJson.containsKey("sendNickName")) {
-                message.setSendNickName(msgJson.getString("sendNickName"))
+                message.sendNickName = msgJson.getString("sendNickName")
             }
 
 
@@ -431,15 +422,15 @@ class ChatRepository(val app: Application) {
                     }
                     atUserIdsStr.append(atUserIds.getLong(k))
                 }
-                message.setAtUserIds(atUserIdsStr.toString())
+                message.atUserIds = atUserIdsStr.toString()
             }
 
             if (msgJson.containsKey("receipt")) {
-                message.setReceipt(msgJson.getBooleanValue("receipt"))
+                message.isReceipt = msgJson.getBooleanValue("receipt")
             }
 
             if (msgJson.containsKey("receiptOk")) {
-                message.setReceiptOk(msgJson.getBooleanValue("receiptOk"))
+                message.isReceiptOk = msgJson.getBooleanValue("receiptOk")
             }
             groupChatMessageDao.insertMessage(message)
         }
@@ -613,4 +604,41 @@ class ChatRepository(val app: Application) {
 
     }
 
+    /**
+     * 添加群
+     */
+    fun addGroup(group: Group) {
+        groupDao.addGroup(group)
+    }
+
+    /**
+     * 批量添加或更新群组
+     */
+    fun addGroups(groups: List<Group>) {
+        groupDao.addGroups(groups)
+    }
+
+    /**
+     * 获取群组信息
+     */
+    fun getAllGroups(): List<Group> {
+        return groupDao.selectAllData()
+    }
+
+    /**
+     * 更新群
+     */
+    fun updateGroup(group: Group) {
+        groupDao.updateGroup(group)
+    }
+    /**
+     * 删除群
+     */
+    fun deleteGroup(groupId: Long) {
+        groupDao.deleteGroupById(groupId)
+    }
+
+    fun clearGroup(){
+        groupDao.deleteGroup()
+    }
 }

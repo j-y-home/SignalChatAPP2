@@ -8,12 +8,13 @@ import androidx.room.Update;
 
 
 import com.example.endtoendencryptionsystem.entiy.database.GroupChatMessage;
+import com.example.endtoendencryptionsystem.entiy.database.PrivateChatMessage;
 
 import java.util.List;
   
 @Dao  
 public interface GroupChatMessageDao {  
-    @Query("SELECT * FROM group_chat_message WHERE conversationId = :conversationId ORDER BY sendTime DESC LIMIT :limit OFFSET :offset")  
+    @Query("SELECT * FROM group_chat_message WHERE conversationId = :conversationId ORDER BY sendTime ASC LIMIT :limit OFFSET :offset")
     List<GroupChatMessage> getMessagesForConversation(long conversationId, int offset, int limit);
       
     @Insert(onConflict = OnConflictStrategy.REPLACE)  
@@ -47,4 +48,7 @@ public interface GroupChatMessageDao {
      */
     @Query("DELETE FROM group_chat_message WHERE groupId = :targetId")
     void deleteMessagesByUserIdAndTargetId(long targetId);
+
+    @Query("SELECT * FROM group_chat_message WHERE messageId = :id")
+    GroupChatMessage getMessagesById(String id);
 }

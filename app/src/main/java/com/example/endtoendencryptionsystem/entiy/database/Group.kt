@@ -21,11 +21,6 @@ class Group(
     @PrimaryKey
     var id:Long?,
     /**
-     * 群id
-     */
-    @ColumnInfo(name = "group_id")
-    var groupId: Long?,
-    /**
      * 群名字
      */
     var name: String?,
@@ -75,5 +70,10 @@ class Group(
      * 是否已删除
      */
     var dissolve: Boolean,
+
+    /**
+     * 是否已退出
+     */
+    var quit: Boolean,
 
 ) : Parcelable

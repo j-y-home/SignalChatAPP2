@@ -1,190 +1,55 @@
-package com.example.endtoendencryptionsystem.entiy.database;
+package com.example.endtoendencryptionsystem.entiy.database
 
-import androidx.annotation.NonNull;
-import androidx.room.Entity;
-import androidx.room.ForeignKey;  
-import androidx.room.Index;  
-import androidx.room.PrimaryKey;
+import androidx.annotation.NonNull
+import androidx.room.Entity
+import androidx.room.ForeignKey
+import androidx.room.Index
+import androidx.room.PrimaryKey
 
-import org.jetbrains.annotations.Nullable;
-
-@Entity(  
-    tableName = "group_chat_message",  
-    foreignKeys = @ForeignKey(  
-        entity = ChatConversation.class,  
-        parentColumns = "id",  
-        childColumns = "conversationId",  
-        onDelete = ForeignKey.CASCADE  
-    ),  
-    indices = {  
-        @Index("conversationId"),
-        @Index("sendTime")  
-    }  
-)  
-public class GroupChatMessage {
+@Entity(
+    tableName = "group_chat_message",
+    foreignKeys = [ForeignKey(
+        entity = ChatConversation::class,
+        parentColumns = arrayOf("id"),
+        childColumns = arrayOf("conversationId"),
+        onDelete = ForeignKey.Companion.CASCADE
+    )],
+    indices = [Index("conversationId"), Index("sendTime")]
+)
+class GroupChatMessage {
+    @JvmField
     @PrimaryKey
-    @NonNull
-    private String messageId;
+    var messageId: String = ""
 
-    @Nullable
-    private String tmpId;
-    @Nullable
-    private long conversationId;
-    @Nullable
-    private long sendId;
-    @Nullable
-    private long groupId;
-    @Nullable
-    private String sendNickName;
-    @Nullable
-    private String content;
-    @Nullable
-    private long sendTime;
-    @Nullable
-    private boolean selfSend;
-    @Nullable
-    private int type;
-    @Nullable
-    private int status;
-    @Nullable
-    private int readedCount;
-    @Nullable
-    private String loadStatus;
-    @Nullable
-    private String atUserIds;
-    @Nullable
-    private boolean receipt;
-    @Nullable
-    private boolean receiptOk;
+    @JvmField
+    var tmpId: String? = null
+    @JvmField
+    var conversationId: Long = 0
+    @JvmField
+    var sendId: Long = 0
+    @JvmField
+    var groupId: Long = 0
+    @JvmField
+    var sendNickName: String? = null
+    @JvmField
+    var content: String? = null
+    @JvmField
+    var sendTime: Long = 0
+    var isSelfSend: Boolean = false
+    @JvmField
+    var type: Int = 0
+    @JvmField
+    var status: Int = 0
+    @JvmField
+    var readedCount: Int = 0
+    @JvmField
+    var loadStatus: String? = null
+    @JvmField
+    var atUserIds: String? = null
+    var isReceipt: Boolean = false
 
-    @NonNull
-    public String getMessageId() {
-        return messageId;
-    }
-
-    public void setMessageId(@NonNull String messageId) {
-        this.messageId = messageId;
-    }
-
-    public String getTmpId() {
-        return tmpId;
-    }
-
-    public void setTmpId(String tmpId) {
-        this.tmpId = tmpId;
-    }
-
-    public long getConversationId() {
-        return conversationId;
-    }
-
-    public void setConversationId(long conversationId) {
-        this.conversationId = conversationId;
-    }
-
-    public long getSendId() {
-        return sendId;
-    }
-
-    public void setSendId(long sendId) {
-        this.sendId = sendId;
-    }
-
-    public long getGroupId() {
-        return groupId;
-    }
-
-    public void setGroupId(long groupId) {
-        this.groupId = groupId;
-    }
-
-    public String getSendNickName() {
-        return sendNickName;
-    }
-
-    public void setSendNickName(String sendNickName) {
-        this.sendNickName = sendNickName;
-    }
-
-    public String getContent() {
-        return content;
-    }
-
-    public void setContent(String content) {
-        this.content = content;
-    }
-
-    public long getSendTime() {
-        return sendTime;
-    }
-
-    public void setSendTime(long sendTime) {
-        this.sendTime = sendTime;
-    }
-
-    public boolean isSelfSend() {
-        return selfSend;
-    }
-
-    public void setSelfSend(boolean selfSend) {
-        this.selfSend = selfSend;
-    }
-
-    public int getType() {
-        return type;
-    }
-
-    public void setType(int type) {
-        this.type = type;
-    }
-
-    public int getStatus() {
-        return status;
-    }
-
-    public void setStatus(int status) {
-        this.status = status;
-    }
-
-    public int getReadedCount() {
-        return readedCount;
-    }
-
-    public void setReadedCount(int readedCount) {
-        this.readedCount = readedCount;
-    }
-
-    public String getLoadStatus() {
-        return loadStatus;
-    }
-
-    public void setLoadStatus(String loadStatus) {
-        this.loadStatus = loadStatus;
-    }
-
-    public String getAtUserIds() {
-        return atUserIds;
-    }
-
-    public void setAtUserIds(String atUserIds) {
-        this.atUserIds = atUserIds;
-    }
-
-    public boolean isReceipt() {
-        return receipt;
-    }
-
-    public void setReceipt(boolean receipt) {
-        this.receipt = receipt;
-    }
-
-    public boolean isReceiptOk() {
-        return receiptOk;
-    }
-
-    public void setReceiptOk(boolean receiptOk) {
-        this.receiptOk = receiptOk;
-    }
     // Getters and setters
+    var isReceiptOk: Boolean = false
+
     // ...  
 }

@@ -9,6 +9,7 @@ import com.alibaba.fastjson.JSONObject
 import com.example.endtoendencryptionsystem.ETEApplication.Companion.getInstance
 import com.example.endtoendencryptionsystem.entiy.database.ChatConversation
 import com.example.endtoendencryptionsystem.entiy.database.Friend
+import com.example.endtoendencryptionsystem.entiy.database.Group
 import com.example.endtoendencryptionsystem.entiy.database.PrivateMessage
 import com.example.endtoendencryptionsystem.entiy.database.User
 import com.example.endtoendencryptionsystem.model.KeyPairsMaker
@@ -25,7 +26,9 @@ import org.whispersystems.libsignal.InvalidKeyException
 import org.whispersystems.libsignal.SignalProtocolAddress
 import org.whispersystems.libsignal.ecc.Curve
 import org.whispersystems.libsignal.ecc.ECKeyPair
+import org.whispersystems.libsignal.groups.GroupSessionBuilder
 import org.whispersystems.libsignal.protocol.PreKeySignalMessage
+import org.whispersystems.libsignal.protocol.SenderKeyDistributionMessage
 import org.whispersystems.libsignal.state.PreKeyBundle
 import org.whispersystems.libsignal.state.PreKeyRecord
 import org.whispersystems.libsignal.state.SignalProtocolStore
@@ -58,13 +61,20 @@ import java.util.concurrent.Executors
  * TODO 5.15:加好友、发消息、存消息、获取消息、删除会话及其关联消息、更新会话、更新消息已读状态、删除消息（有bug）已走通。
  * TODO 待处理bug0：加好友有bug，A加B，如果B不在线，那么就收不到websocket的消息，就无法在B的设备上存储好友信息。
  * 解决：从接口获取到好友信息后，调用下addFriend方法？
+ * TODO 好友关系解除后，本地数据库表删除
  * TODO 待处理bug1 ：删除了会话，websocket又发送了消息，导致数据库中又插入了已删除的数据。
- * TODO 待处理bug2 ：删除消息，数据库中删除了，但是UI页面未删除。
+ * TODO 已处理bug2 ：删除消息，数据库中删除了，但是UI页面未删除。 已解决
  * TODO 待处理问题1：除了主动发送的消息，其他消息如何添加messageId（比如：”你们已经成为好友啦“）
  * TODO 待处理问题2：图片，文件在数据库中如何存储。
  * TODO 待处理问题3：加密部分
  * TODO 待处理问题4：群聊
  * TODO 待处理问题5：撤回消息
+ * TODO 待处理问题5：置顶消息，杀掉进程，再启动，置顶失效。（处理数据库表里面会话的置顶状态）
+ *
+ * TODO 最新想法：
+ * 简单设计：本地不存好友表，发送信息时把好友信息传过来。这样本地不用处理好友表的增删改查。
+ * 没网时，只能显示以前的会话记录（本地表中的），无法发送消息。
+ *
  */
 class MyNativeModule : UniModule() {
     // 注册方法供 UniApp 调用（同步方法）
@@ -94,14 +104,14 @@ class MyNativeModule : UniModule() {
      */
     @RequiresApi(api = Build.VERSION_CODES.O)
     @UniJSMethod(uiThread = false)
-    fun register(uid: String?, callback: UniJSCallback) {
+    fun register(address: String, callback: UniJSCallback) {
         val random = Random()
         val preKeyId = random.nextInt(100)
         val signedPreKeyId = random.nextInt(100)
         var alice: Entity? = null
         try {
-            Log.e("xxx", "注册走获取加密身份公钥等:"+uid)
-            alice = Entity(preKeyId, signedPreKeyId, uid)
+            Log.e("xxx", "注册走获取加密身份公钥等:"+address)
+            alice = Entity(preKeyId, signedPreKeyId, address)
             val registrationId = alice.getStore().getLocalRegistrationId()
             val deviceId = alice.getPreKey().getDeviceId()
             val preKeyPublic =
@@ -140,7 +150,6 @@ class MyNativeModule : UniModule() {
             data.put("preKeyBundleMaker", JSON.toJSON(preKeyBundleMaker))
             data.put("storeMaker", JSON.toJSON(storeMaker))
 
-            MMKV.defaultMMKV().encode("currentUserId", uid!!.toLong())
             MMKV.defaultMMKV().encode("preKeyBundleMaker", JSON.toJSONString(preKeyBundleMaker))
             MMKV.defaultMMKV().encode("storeMaker", JSON.toJSONString(storeMaker))
             //把这两个值传给uniapp
@@ -179,6 +188,33 @@ class MyNativeModule : UniModule() {
     }
 
     /**
+     * 后台数据库接收到好友列表后，批量更新表
+     */
+//    @UniJSMethod(uiThread = false)
+//    fun addFriends(friendJson: String, callback: UniJSCallback) {
+//        Log.e(TAG, "接收到的好友信息：" + friendJson)
+//        try {
+//            var user = json.toObject<List<User>>(friendJson.toString())
+//            val currentUserId = MMKV.defaultMMKV().decodeLong("currentUserId")
+//            Log.e(TAG, "currentUserId：" + currentUserId)
+//            val friend = Friend(
+//                userId = currentUserId,
+//                friendId = user.id.toLong(),
+//                friendNickName = user.nickName,
+//                friendHeadImage = user.headImage,
+//                createdTime = user.createdTime,
+//                preKeyBundleMaker = user.preKeyBundleMaker,
+//                storeMaker = user.storeMaker)
+//            Log.e(TAG, "要添加的Friend信息：" + JSONObject.toJSONString(friend))
+//            chatRepository.addFriend(friend)
+//            callback.invoke(true)
+//        } catch (ignored: Exception) {
+//            Log.e(TAG, "添加好友报错信息：" + ignored.message)
+//            callback.invoke(false)
+//        }
+//    }
+
+    /**
      * 根据好友Id获取好友信息
      * @param friendId
      * @return
@@ -200,7 +236,7 @@ class MyNativeModule : UniModule() {
      * 初始化获取aliceToBobSession
      */
     @RequiresApi(api = Build.VERSION_CODES.O)
-    fun initAliceToBobSession(message: String?, receiverUid: String): Session? {
+    fun initAliceToBobSession(message: String?, friend: Friend): Session? {
         Log.e("xxxx", "初始化initAliceToBobSession：" + message)
         /**
          * 每次的加密解密，都需要一个aliceToBobSession对象，要创建这个对象，需要一些密钥信息
@@ -218,61 +254,56 @@ class MyNativeModule : UniModule() {
         var decodedPrivateKey: ByteArray? = null
         val bobPreKeyBundle: PreKeyBundle?
         val alicePreKeyBundle: PreKeyBundle?
-        //1，根据receiverUid获取好友信息
-        val friend = getFriendInfoById(receiverUid.toLong())
-        if (friend != null) {
-            //2, 获取bobPreKeyBundle
-            var bobPreKeyBundleMaker = checkNotNull(json.toObject<PreKeyBundleMaker>(friend.preKeyBundleMaker.toString()))
-            bobPreKeyBundle = PreKeyBundleCreatorUtil.createPreKeyBundle(bobPreKeyBundleMaker)
+        //2, 获取bobPreKeyBundle
+        var bobPreKeyBundleMaker = checkNotNull(json.toObject<PreKeyBundleMaker>(friend.preKeyBundleMaker.toString()))
+        bobPreKeyBundle = PreKeyBundleCreatorUtil.createPreKeyBundle(bobPreKeyBundleMaker)
 
-            //3,获取alicePreKeyBundle
-            var alicePreKeyBundleMaker = checkNotNull(
-                json.toObject<PreKeyBundleMaker>(MMKV.defaultMMKV().decodeString("preKeyBundleMaker").toString()))
+        //3,获取alicePreKeyBundle
+        var alicePreKeyBundleMaker = checkNotNull(
+            json.toObject<PreKeyBundleMaker>(MMKV.defaultMMKV().decodeString("preKeyBundleMaker").toString()))
 
-            alicePreKeyBundle = PreKeyBundleCreatorUtil.createPreKeyBundle(alicePreKeyBundleMaker)
+        alicePreKeyBundle = PreKeyBundleCreatorUtil.createPreKeyBundle(alicePreKeyBundleMaker)
 
-            //4,获取aliceStoreMaker
-            val aliceStoreMaker = json.toObject<StoreMaker>(MMKV.defaultMMKV().decodeString("storeMaker")
-                .toString())
+        //4,获取aliceStoreMaker
+        val aliceStoreMaker = json.toObject<StoreMaker>(MMKV.defaultMMKV().decodeString("storeMaker")
+            .toString())
 
-            checkNotNull(keyPairsMaker)
-            decodedPrivateKey = Base64.getDecoder().decode(keyPairsMaker.getPreKeyPairPrivateKey())
-            val ecPrivateKey = Curve.decodePrivatePoint(decodedPrivateKey)
-            val ecKeyPair = ECKeyPair(alicePreKeyBundle.getPreKey(), ecPrivateKey)
-            val preKeyRecord = PreKeyRecord(alicePreKeyBundle.getPreKeyId(), ecKeyPair)
+        checkNotNull(keyPairsMaker)
+        decodedPrivateKey = Base64.getDecoder().decode(keyPairsMaker.getPreKeyPairPrivateKey())
+        val ecPrivateKey = Curve.decodePrivatePoint(decodedPrivateKey)
+        val ecKeyPair = ECKeyPair(alicePreKeyBundle.getPreKey(), ecPrivateKey)
+        val preKeyRecord = PreKeyRecord(alicePreKeyBundle.getPreKeyId(), ecKeyPair)
 
-            val decodedSignedPrivateKey =
-                Base64.getDecoder().decode(keyPairsMaker.getSignedPreKeySignaturePrivateKey())
-            val signedPrivateKey = Curve.decodePrivatePoint(decodedSignedPrivateKey)
-            val signedPreKeyPair = ECKeyPair(alicePreKeyBundle.getSignedPreKey(), signedPrivateKey)
+        val decodedSignedPrivateKey =
+            Base64.getDecoder().decode(keyPairsMaker.getSignedPreKeySignaturePrivateKey())
+        val signedPrivateKey = Curve.decodePrivatePoint(decodedSignedPrivateKey)
+        val signedPreKeyPair = ECKeyPair(alicePreKeyBundle.getSignedPreKey(), signedPrivateKey)
 
-            val signedPreKeyRecord = SignedPreKeyRecord(
-                alicePreKeyBundle.getSignedPreKeyId(),
-                keyPairsMaker.getTimestamp(),
-                signedPreKeyPair,
-                alicePreKeyBundle.getSignedPreKeySignature()
-            )
+        val signedPreKeyRecord = SignedPreKeyRecord(
+            alicePreKeyBundle.getSignedPreKeyId(),
+            keyPairsMaker.getTimestamp(),
+            signedPreKeyPair,
+            alicePreKeyBundle.getSignedPreKeySignature()
+        )
 
-            //初始化signalProtocolStore
-            checkNotNull(aliceStoreMaker)
-            signalProtocolStore =
-                InMemorySignalProtocolStoreCreatorUtil.createStore(aliceStoreMaker)
-            signalProtocolStore.storePreKey(alicePreKeyBundle.getPreKeyId(), preKeyRecord)
-            signalProtocolStore.storeSignedPreKey(
-                alicePreKeyBundle.getSignedPreKeyId(),
-                signedPreKeyRecord
-            )
+        //初始化signalProtocolStore
+        checkNotNull(aliceStoreMaker)
+        signalProtocolStore =
+            InMemorySignalProtocolStoreCreatorUtil.createStore(aliceStoreMaker)
+        signalProtocolStore.storePreKey(alicePreKeyBundle.getPreKeyId(), preKeyRecord)
+        signalProtocolStore.storeSignedPreKey(
+            alicePreKeyBundle.getSignedPreKeyId(),
+            signedPreKeyRecord
+        )
 
-            //初始化signalProtocolAddress userId和设备id组成“端”的唯一标识，目前只做单端，即一个用户只在一个设备上。
-            signalProtocolAddress = SignalProtocolAddress(receiverUid, 1)
-            aliceToBobSession = Session(signalProtocolStore, bobPreKeyBundle, signalProtocolAddress)
-            return aliceToBobSession
-        }
-
-        return null
+        //初始化signalProtocolAddress userId和设备id组成“端”的唯一标识，目前只做单端，即一个用户只在一个设备上。
+        signalProtocolAddress = SignalProtocolAddress(friend.id.toString(), 1)
+        aliceToBobSession = Session(signalProtocolStore, bobPreKeyBundle, signalProtocolAddress)
+        return aliceToBobSession
     }
 
     /**
+     * 私聊的加密解密
      * 加密解密先放在一个方法里
      * encrypt 1:加密，0：解密
      * 带回调的加密解密方法
@@ -281,28 +312,24 @@ class MyNativeModule : UniModule() {
      * sendPreKeyBundleMakerJson 发送者的preKeyBundleMaker
      */
     @UniJSMethod(uiThread = false)
-    fun encrypt(encrypt: Int, message: String, receiverId: String, callback: UniJSCallback) {
+    fun encrypt(encrypt: Int, message: String, friendJson: String, callback: UniJSCallback) {
         Log.e(
             "xxxx",
-            "当前操作类型：" + encrypt + "   接收者Id:" + receiverId + "  收到的消息：" + message
+            "当前操作类型：" + encrypt + "   接收者Id:" + friendJson + "  收到的消息：" + message
         )
         var signalCipherText: String? = "未正确加密消息"
         var decryptedMsg: String? = "未正确解密消息"
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val aliceToBobSession = initAliceToBobSession(message, receiverId)
+            val friend = json.toObject<Friend>(friendJson)
+            val aliceToBobSession = initAliceToBobSession(message, friend)
             if (aliceToBobSession != null) {
                 if (encrypt == 1) { //加密
                     val toBobMessage = aliceToBobSession.encrypt(message)
                     signalCipherText = Base64.getEncoder().encodeToString(toBobMessage.serialize())
                     Log.e("xxxx", "一系列算法加密后的消息：" + signalCipherText)
-                    insertPrivateMessage(PrivateMessage(sendId = MMKV.defaultMMKV().decodeLong("currentUserId"),
-                        recvId = receiverId.toLong(), content = message,sendTime = Date()))
+//                    insertPrivateMessage(PrivateMessage(sendId = MMKV.defaultMMKV().decodeLong("currentUserId"),
+//                        recvId = friend.id.toLong(), content = message,sendTime = Date()))
 
-                    var list = chatRepository.getAllMsgFromFriend(MMKV.defaultMMKV().decodeLong("currentUserId").toInt(), receiverId.toInt())
-                    //遍历list
-                    for (i in list.indices) {
-                        Log.e("xxxx", "消息内容：" + list[i].content)
-                    }
                     callback.invoke(signalCipherText)
                 } else { //解密
                     val ds = Base64.getDecoder().decode(message)
@@ -467,5 +494,99 @@ class MyNativeModule : UniModule() {
         }
     }
 
+    /**
+     * 添加群
+     */
+    @UniJSMethod(uiThread = false)
+    fun addGroup(groupJson: String, callback: UniJSCallback) {
+        Log.e(TAG, "接收到的群信息：" + groupJson)
+        try {
+            var group = json.toObject<Group>(groupJson)
+            chatRepository.addGroup(group)
+            callback.invoke(true)
+        } catch (ignored: Exception) {
+            Log.e(TAG, "添加群报错信息：" + ignored.message)
+            callback.invoke(false)
+        }
+    }
+
+    /**
+     * 新的数据覆盖
+     */
+    @UniJSMethod(uiThread = false)
+    fun addGroups(groupJson: String, callback: UniJSCallback) {
+        Log.e(TAG, "接收到的群信息：" + groupJson)
+        try {
+            chatRepository.clearGroup()
+            var groups = json.toObject<List<Group>>(groupJson)
+            chatRepository.addGroups(groups)
+            callback.invoke(true)
+        } catch (ignored: Exception) {
+            Log.e(TAG, "批量添加更新群报错信息：" + ignored.message)
+            callback.invoke(false)
+        }
+    }
+
+    /**
+     * 获取群组信息
+     */
+    @UniJSMethod(uiThread = false)
+    fun getAllGroups(userId: String, callback: UniJSCallback) {
+        executor.execute({
+            try {
+                val userIdLong = userId.toLong()
+                val result = chatRepository.getAllGroups()
+                Log.e(TAG,"获取到本地数据库群组信息："+json.toJSONString(result))
+                callback.invoke(result)
+            } catch (e: java.lang.Exception) {
+                Log.e(TAG, "Error in getAllGroups", e)
+                callback.invoke(JSONObject())
+            }
+        })
+    }
+
+    /**
+     * 更新群聊
+     */
+    @UniJSMethod(uiThread = false)
+    fun updateGroup(groupJson: String, callback: UniJSCallback){
+        Log.e(TAG, "接收到的群聊信息：" + groupJson)
+        try {
+            var group = json.toObject<Group>(groupJson)
+            chatRepository.updateGroup(group)
+            callback.invoke(true)
+        } catch (ignored: Exception) {
+            Log.e(TAG, "更新群聊报错信息：" + ignored.message)
+            callback.invoke(false)
+        }
+    }
+
+    /**
+     * 删除群聊
+     */
+    @UniJSMethod(uiThread = false)
+    fun deleteGroup(groupId: Long, callback: UniJSCallback) {
+        try {
+            chatRepository.deleteGroup(groupId)
+            callback.invoke(true)
+        } catch (ignored: Exception) {
+            Log.e(TAG, "删除群聊报错信息：" + ignored.message)
+            callback.invoke(false)
+        }
+    }
+
+    /***
+     * ------------------------群聊的加密解密功能-----------------
+     */
+
+    /**
+     * 1,首先，需要为每个群组创建一个唯一的分发 ID (Distribution ID)，并初始化群组会话。
+     * @param distributionId 群组唯一ID
+     */
+    fun initializedGroupSession(distributionId: DistributionId): SenderKeyDistributionMessage {
+        //发送者地址
+        val self = SignalProtocolAddress(aci.toString(), 1)
+        return SignalGroupSessionBuilder(lock, GroupSessionBuilder(store)).create(self, distributionId.asUuid())
+    }
 
 }
