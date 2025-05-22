@@ -1,5 +1,7 @@
 package com.example.endtoendencryptionsystem.utils
 
+import android.annotation.SuppressLint
+import android.content.Context
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
@@ -18,23 +20,31 @@ import com.example.endtoendencryptionsystem.model.StoreMaker
 import com.example.endtoendencryptionsystem.repository.ChatRepository
 import com.example.endtoendencryptionsystem.rsa.Entity
 import com.example.endtoendencryptionsystem.rsa.Session
+import com.example.endtoendencryptionsystem.rsa.group.GroupCipherUtil
+import com.example.endtoendencryptionsystem.rsa.group.GroupSessionUtil
+import com.example.endtoendencryptionsystem.rsa.group.MySenderKeyStore
 import com.tencent.mmkv.MMKV
 import io.dcloud.feature.uniapp.annotation.UniJSMethod
 import io.dcloud.feature.uniapp.bridge.UniJSCallback
 import io.dcloud.feature.uniapp.common.UniModule
 import org.whispersystems.libsignal.InvalidKeyException
+import org.whispersystems.libsignal.SessionCipher
 import org.whispersystems.libsignal.SignalProtocolAddress
 import org.whispersystems.libsignal.ecc.Curve
 import org.whispersystems.libsignal.ecc.ECKeyPair
 import org.whispersystems.libsignal.groups.GroupSessionBuilder
+import org.whispersystems.libsignal.groups.SenderKeyName
+import org.whispersystems.libsignal.groups.state.SenderKeyStore
+import org.whispersystems.libsignal.protocol.CiphertextMessage
 import org.whispersystems.libsignal.protocol.PreKeySignalMessage
 import org.whispersystems.libsignal.protocol.SenderKeyDistributionMessage
+import org.whispersystems.libsignal.protocol.SignalMessage
 import org.whispersystems.libsignal.state.PreKeyBundle
 import org.whispersystems.libsignal.state.PreKeyRecord
 import org.whispersystems.libsignal.state.SignalProtocolStore
 import org.whispersystems.libsignal.state.SignedPreKeyRecord
+import java.nio.charset.StandardCharsets
 import java.util.Base64
-import java.util.Date
 import java.util.Random
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
@@ -81,6 +91,17 @@ class MyNativeModule : UniModule() {
     private val chatRepository = ChatRepository(getInstance()!!)
     private val executor: Executor = Executors.newSingleThreadExecutor()
     private val TAG: String = "MyNativeModule"
+    private var senderKeyStore: SenderKeyStore? = null
+    private lateinit var cipherUtil: GroupCipherUtil
+    private lateinit var sessionUtil: GroupSessionUtil
+    private lateinit var selfAddress: SignalProtocolAddress
+
+    @SuppressLint("NotConstructor")
+    fun MyNativeModule(context: Context?) {
+        this.senderKeyStore = MySenderKeyStore()
+        this.cipherUtil = GroupCipherUtil(senderKeyStore)
+        this.sessionUtil = GroupSessionUtil(senderKeyStore)
+    }
 
     /**
      * 存储当前登录的用户信息到sp
@@ -176,8 +197,7 @@ class MyNativeModule : UniModule() {
                 friendNickName = user.nickName,
                 friendHeadImage = user.headImage,
                 createdTime = user.createdTime,
-                preKeyBundleMaker = user.preKeyBundleMaker,
-                storeMaker = user.storeMaker)
+                preKeyBundleMaker = user.preKeyBundleMaker)
             Log.e(TAG, "要添加的Friend信息：" + JSONObject.toJSONString(friend))
             chatRepository.addFriend(friend)
             callback.invoke(true)
@@ -298,6 +318,7 @@ class MyNativeModule : UniModule() {
 
         //初始化signalProtocolAddress userId和设备id组成“端”的唯一标识，目前只做单端，即一个用户只在一个设备上。
         signalProtocolAddress = SignalProtocolAddress(friend.id.toString(), 1)
+
         aliceToBobSession = Session(signalProtocolStore, bobPreKeyBundle, signalProtocolAddress)
         return aliceToBobSession
     }
@@ -320,30 +341,51 @@ class MyNativeModule : UniModule() {
         var signalCipherText: String? = "未正确加密消息"
         var decryptedMsg: String? = "未正确解密消息"
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val friend = json.toObject<Friend>(friendJson)
-            val aliceToBobSession = initAliceToBobSession(message, friend)
-            if (aliceToBobSession != null) {
-                if (encrypt == 1) { //加密
-                    val toBobMessage = aliceToBobSession.encrypt(message)
-                    signalCipherText = Base64.getEncoder().encodeToString(toBobMessage.serialize())
-                    Log.e("xxxx", "一系列算法加密后的消息：" + signalCipherText)
-//                    insertPrivateMessage(PrivateMessage(sendId = MMKV.defaultMMKV().decodeLong("currentUserId"),
-//                        recvId = friend.id.toLong(), content = message,sendTime = Date()))
-
-                    callback.invoke(signalCipherText)
-                } else { //解密
-                    val ds = Base64.getDecoder().decode(message)
-                    var toBobMessageDecrypt: PreKeySignalMessage? = null
-                    try {
-                        toBobMessageDecrypt = PreKeySignalMessage(ds)
-                        decryptedMsg = aliceToBobSession.decrypt(toBobMessageDecrypt)
-                    } catch (ex: Exception) {
-                    }
-                    callback.invoke(decryptedMsg)
-                }
+            // Get the session from database
+            val session = chatRepository.getOrCreateSession(userId, friendId)
+            // Encrypt or decrypt
+            val result = if (encrypt == 1) {
+                val encryptedMessage = session.encrypt(message)
+                // Important: Save the updated session state after encryption
+                chatRepository.updateSession(friendId, 1, session)
+                val result = Base64.getEncoder().encodeToString(encryptedMessage.serialize())
             } else {
-                Log.e("xxxx", "初始化Session失败：")
+                val ds = Base64.getDecoder().decode(message)
+                var toBobMessageDecrypt = PreKeySignalMessage(ds)
+                val decryptedMessage = session.decrypt(toBobMessageDecrypt)
+                chatRepository.updateSession(friendId, 1, session)
+                val result = decryptedMessage
             }
+            callback.invoke(result)
+        }
+
+
+
+
+//            val friend = json.toObject<Friend>(friendJson)
+//            val aliceToBobSession = initAliceToBobSession(message, friend)
+//            if (aliceToBobSession != null) {
+//                if (encrypt == 1) { //加密
+//                    val toBobMessage = aliceToBobSession.encrypt(message)
+//                    signalCipherText = Base64.getEncoder().encodeToString(toBobMessage.serialize())
+//                    Log.e("xxxx", "一系列算法加密后的消息：" + signalCipherText)
+////                    insertPrivateMessage(PrivateMessage(sendId = MMKV.defaultMMKV().decodeLong("currentUserId"),
+////                        recvId = friend.id.toLong(), content = message,sendTime = Date()))
+//
+//                    callback.invoke(signalCipherText)
+//                } else { //解密
+//                    val ds = Base64.getDecoder().decode(message)
+//                    var toBobMessageDecrypt: PreKeySignalMessage? = null
+//                    try {
+//                        toBobMessageDecrypt = PreKeySignalMessage(ds)
+//                        decryptedMsg = aliceToBobSession.decrypt(toBobMessageDecrypt)
+//                    } catch (ex: Exception) {
+//                    }
+//                    callback.invoke(decryptedMsg)
+//                }
+//            } else {
+//                Log.e("xxxx", "初始化Session失败：")
+//            }
         }
     }
 
@@ -583,10 +625,170 @@ class MyNativeModule : UniModule() {
      * 1,首先，需要为每个群组创建一个唯一的分发 ID (Distribution ID)，并初始化群组会话。
      * @param distributionId 群组唯一ID
      */
-    fun initializedGroupSession(distributionId: DistributionId): SenderKeyDistributionMessage {
-        //发送者地址
-        val self = SignalProtocolAddress(aci.toString(), 1)
-        return SignalGroupSessionBuilder(lock, GroupSessionBuilder(store)).create(self, distributionId.asUuid())
+//    fun initializedGroupSession(distributionId: DistributionId): SenderKeyDistributionMessage {
+//        //发送者地址
+//        val self = SignalProtocolAddress(aci.toString(), 1)
+//        return SignalGroupSessionBuilder(lock, GroupSessionBuilder(store)).create(self, distributionId.asUuid())
+//    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    @UniJSMethod(uiThread = false)
+    fun createGroupSession(groupId: String,userId: String, callback: UniJSCallback) {
+        executor.execute(Runnable {
+            try {
+                // 创建发送者地址
+                selfAddress = SignalProtocolAddress(userId.toString(), 1)
+                // 创建发送者密钥分发消息
+                val distributionMessage = sessionUtil.createSenderKeyDistribution(groupId,selfAddress)
+                // 序列化分发消息
+                val serializedMessage = Base64.getEncoder().encodeToString(distributionMessage.serialize())
+                // 返回序列化的分发消息
+                callback.invoke(serializedMessage)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error creating group session", e)
+                callback.invoke("创建群组会话失败: " + e.message)
+            }
+        })
     }
 
+    /**
+     * 创建群组会话并生成分发消息
+     * @param groupId 群组ID
+     * @param senderAddress 发送者地址
+     * @return 发送者密钥分发消息
+     */
+    fun createSenderKeyDistribution(
+        groupId: String?,
+        senderAddress: SignalProtocolAddress?
+    ): SenderKeyDistributionMessage? {
+        val senderKeyName = SenderKeyName(groupId, senderAddress)
+        val sessionBuilder = GroupSessionBuilder(senderKeyStore)
+        return sessionBuilder.create(senderKeyName)
+    }
+
+    /**
+     * 处理接收到的分发消息
+     * @param groupId 群组ID
+     * @param senderId 发送者ID
+     * @param encodedDistributionMessage Base64编码的分发消息
+     * @return 处理是否成功
+     */
+    @RequiresApi(Build.VERSION_CODES.O)
+    fun processDistributionMessage(
+        groupId: String?,
+        senderId: String?,
+        encodedDistributionMessage: String?
+    ) {
+        try {
+            // 解码分发消息
+            val messageBytes = Base64.getDecoder().decode(encodedDistributionMessage)
+            val distributionMessage = SenderKeyDistributionMessage(messageBytes)
+            // 创建发送者地址
+            val senderAddress = SignalProtocolAddress(senderId, 1)
+            // 处理分发消息
+            sessionUtil.processSenderKeyDistribution(groupId, senderAddress, distributionMessage)
+        } catch (e: java.lang.Exception) {
+            Log.e("GroupChat", "Error processing distribution message", e)
+        }
+    }
+
+    /**
+     * 加密群组消息
+     * @param groupId 群组ID
+     * @param message 明文消息
+     * @return Base64编码的加密消息
+     */
+    @RequiresApi(Build.VERSION_CODES.O)
+    fun encryptGroupMessage(groupId: String?, message: String,callback: UniJSCallback) {
+        try {
+            // 加密消息
+            val plaintext: ByteArray? = message.toByteArray(StandardCharsets.UTF_8)
+            val ciphertext = cipherUtil.encrypt(groupId, selfAddress, plaintext)
+            // 编码加密后的消息
+            val encryptMsg = Base64.getEncoder().encodeToString(ciphertext)
+            Log.e(TAG, "加密后的群组消息："+encryptMsg)
+            callback.invoke(encryptMsg)
+        } catch (e: java.lang.Exception) {
+            Log.e(TAG, "Error encrypting group message", e)
+            callback.invoke("")
+        }
+    }
+
+    /**
+     * 解密群组消息
+     * @param groupId 群组ID
+     * @param senderId 发送者ID
+     * @param encodedMessage Base64编码的加密消息
+     * @return 解密后的消息
+     */
+    @RequiresApi(Build.VERSION_CODES.O)
+    fun decryptGroupMessage(groupId: String?, senderId: String?, encodedMessage: String?,callback: UniJSCallback) {
+        try {
+            // 解码加密消息
+            val ciphertext = Base64.getDecoder().decode(encodedMessage)
+            // 创建发送者地址
+            val senderAddress = SignalProtocolAddress(senderId, 1)
+            // 解密消息
+            val plaintext = cipherUtil.decrypt(groupId, senderAddress, ciphertext)
+            // 转换为字符串
+            val deMsg = kotlin.text.String(plaintext!!, StandardCharsets.UTF_8)
+            Log.e(TAG, "解密后的群组消息："+deMsg)
+            callback.invoke(deMsg)
+        } catch (e: java.lang.Exception) {
+            Log.e("GroupChat", "Error decrypting group message", e)
+            callback.invoke("未正确解密消息")
+        }
+    }
+
+
+    /**
+     * 加密Sender Key的过程
+     * 群组成员生成自己的群组发送密钥，加密该密钥后，发送给其他群组成员。
+     */
+    @RequiresApi(Build.VERSION_CODES.O)
+    fun encryptSenderKeyFor1to1(userId: String?, recipientId: String?, senderKeyDistribution: String): String {
+        // 使用与recipientId之间的1:1会话密钥加密senderKeyDistribution
+        val cipher: SessionCipher =
+            SessionCipher(signalProtocolStore, SignalProtocolAddress(recipientId, 1))
+        val encrypted: CiphertextMessage = cipher.encrypt(senderKeyDistribution.toByteArray())
+        return Base64.getEncoder().encodeToString(encrypted.serialize())
+    }
+
+    /**
+     *  解密Sender Key的过程
+     */
+    @RequiresApi(Build.VERSION_CODES.O)
+    fun decryptSenderKeyFrom1to1(senderId: String?, encryptedSenderKey: String?): String {
+        // 使用与senderId之间的1:1会话密钥解密
+        val cipher = SessionCipher(signalProtocolStore, SignalProtocolAddress(senderId, 1))
+        val encryptedBytes: ByteArray? = Base64.getDecoder().decode(encryptedSenderKey)
+        val plaintextBytes: ByteArray? = cipher.decrypt(SignalMessage(encryptedBytes))
+        return kotlin.text.String(plaintextBytes!!)
+    }
+
+    // 分发群组密钥（安全版本）
+    private fun distributeGroupKey(
+        groupId: String?, members: List<String?>,
+        distributionMessage: SenderKeyDistributionMessage
+    ) {
+        val serializedMessage = distributionMessage.serialize()
+        // 对每个成员使用一对一加密会话发送密钥
+        for (memberId in members) {
+            if (memberId != selfAddress.getName()) {
+                // 1. 获取与该成员的一对一加密会话
+                val memberAddress = SignalProtocolAddress(memberId, 1)
+                val sessionCipher = SessionCipher(protocolStore, memberAddress)
+                // 2. 使用一对一会话加密群组密钥分发消息
+                val encryptedDistributionMessage = sessionCipher.encrypt(serializedMessage)
+
+
+                // 3. 发送加密后的分发消息
+                // networkService.sendEncryptedDistributionMessage(
+                //     memberId,
+                //     encryptedDistributionMessage.serialize(),
+                //     encryptedDistributionMessage.getType()
+                // );
+            }
+        }
+    }
 }

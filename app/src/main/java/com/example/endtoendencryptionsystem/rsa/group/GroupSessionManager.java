@@ -4,13 +4,14 @@ import org.whispersystems.libsignal.SignalProtocolAddress;
 import org.whispersystems.libsignal.groups.GroupSessionBuilder;  
 import org.whispersystems.libsignal.groups.state.SenderKeyRecord;  
 import org.whispersystems.libsignal.groups.SenderKeyName;  
-import org.whispersystems.libsignal.protocol.SenderKeyDistributionMessage;  
-  
+import org.whispersystems.libsignal.protocol.SenderKeyDistributionMessage;
+import org.whispersystems.libsignal.state.impl.InMemorySignalProtocolStore;
+
 public class GroupSessionManager {  
-    private final MySignalProtocolStore protocolStore;  
+    private final InMemorySignalProtocolStore protocolStore;
     private final SignalProtocolAddress selfAddress;  
       
-    public GroupSessionManager(MySignalProtocolStore protocolStore, SignalProtocolAddress selfAddress) {  
+    public GroupSessionManager(InMemorySignalProtocolStore protocolStore, SignalProtocolAddress selfAddress) {
         this.protocolStore = protocolStore;  
         this.selfAddress = selfAddress;  
     }  

@@ -25,6 +25,7 @@ import org.whispersystems.libsignal.UntrustedIdentityException;
 import org.whispersystems.libsignal.protocol.CiphertextMessage;
 import org.whispersystems.libsignal.protocol.PreKeySignalMessage;
 import org.whispersystems.libsignal.state.PreKeyBundle;
+import org.whispersystems.libsignal.state.SessionRecord;
 import org.whispersystems.libsignal.state.SignalProtocolStore;
 
 import java.nio.charset.Charset;
@@ -40,16 +41,22 @@ public class Session {
     private Operation lastOp;
     private SessionCipher cipher;
 
-    public Session(SignalProtocolStore self,
-                   PreKeyBundle otherKeyBundle,
-                   SignalProtocolAddress otherAddress)
-    {
+    public Session(SignalProtocolStore self, PreKeyBundle otherKeyBundle,
+                   SignalProtocolAddress otherAddress,byte[] serializedSession) {
         this.self = self;
         this.otherKeyBundle = otherKeyBundle;
         this.otherAddress = otherAddress;
+
+        // Deserialize and store the session
+        try {
+            SessionRecord sessionRecord = new SessionRecord(serializedSession);
+            self.storeSession(otherAddress, sessionRecord);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to deserialize session", e);
+        }
     }
 
-    private synchronized SessionCipher getCipher(Operation operation) {
+        private synchronized SessionCipher getCipher(Operation operation) {
         if (operation == lastOp) {
             return cipher;
         }
@@ -98,6 +105,23 @@ public class Session {
             return new String(decrypted, UTF8);
         } catch (Exception e) {
             throw new RuntimeException(e);
+        }
+    }
+
+
+    /**
+     * Serializes the session state for storage in database
+     * @return Serialized session data as byte array
+     */
+    public byte[] serialize() {
+        try {
+            // We need to serialize the session state from the protocol store
+            // The key information is in the SessionRecord for this address
+            SessionRecord sessionRecord = self.loadSession(otherAddress);
+            // SessionRecord already has a serialize() method we can use
+            return sessionRecord.serialize();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to serialize session", e);
         }
     }
 }

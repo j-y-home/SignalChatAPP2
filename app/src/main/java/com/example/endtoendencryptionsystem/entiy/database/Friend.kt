@@ -57,10 +57,6 @@ class Friend(
      */
     @ColumnInfo(name="pre_key_bundle_maker")
     var preKeyBundleMaker: String?,
-    /**
-     * 另一个密钥
-     */
-    @ColumnInfo(name = "store_maker")
-    var storeMaker: String?
+
 
 ) : Parcelable
