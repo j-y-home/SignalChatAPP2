@@ -15,14 +15,16 @@ import com.example.endtoendencryptionsystem.entiy.database.key.SignalSignedPreKe
  */
 @Dao
 interface SignalKeyDao {  
-    // 身份密钥操作  
+    // --------------身份密钥操作----------------
     @Query("SELECT * FROM signal_identity_keys WHERE userId = :userId")  
     fun getIdentityKey(userId: String): SignalIdentityKey?
       
     @Insert(onConflict = OnConflictStrategy.REPLACE)  
     fun insertIdentityKey(identityKey: SignalIdentityKey)
+
+
       
-    // 预密钥操作  
+    // --------------预密钥操作----------------
     @Query("SELECT * FROM signal_pre_keys WHERE keyId = :keyId AND userId = :userId")  
     fun getPreKey(keyId: Int, userId: String): SignalPreKey?
       
@@ -31,27 +33,54 @@ interface SignalKeyDao {
       
     @Query("DELETE FROM signal_pre_keys WHERE keyId = :keyId AND userId = :userId")
     fun deletePreKey(keyId: Int, userId: String)
+
+
       
-    // 签名预密钥操作  
+    // -----------------签名预密钥操作--------------------
     @Query("SELECT * FROM signal_signed_pre_keys WHERE keyId = :keyId AND userId = :userId")  
     fun getSignedPreKey(keyId: Int, userId: String): SignalSignedPreKey?
       
     @Insert(onConflict = OnConflictStrategy.REPLACE)  
     fun insertSignedPreKey(signedPreKey: SignalSignedPreKey)
+
+    //getAllSignedPreKeys
+    @Query("SELECT * FROM signal_signed_pre_keys WHERE userId = :userId")
+    fun getAllSignedPreKeys(userId: String): List<SignalSignedPreKey>
+
+    //deleteSignedPreKey
+    @Query("DELETE FROM signal_signed_pre_keys WHERE keyId = :keyId AND userId = :userId")
+    fun deleteSignedPreKey(keyId: Int, userId: String)
+
+
       
-    // 会话操作  
-    @Query("SELECT * FROM signal_sessions WHERE sessionKey = :sessionKey AND userId = :userId")  
-    fun getSession(sessionKey: String, userId: String): SignalSession?
-      
-    @Insert(onConflict = OnConflictStrategy.REPLACE)  
-    fun insertSession(session: SignalSession)
-      
-    // 发送者密钥操作  
+    // -------------发送者密钥操作--------------
     @Query("SELECT * FROM signal_sender_keys WHERE senderKeyName = :senderKeyName AND userId = :userId")  
     fun getSenderKey(senderKeyName: String, userId: String): SignalSenderKey?
       
     @Insert(onConflict = OnConflictStrategy.REPLACE)  
     fun insertSenderKey(senderKey: SignalSenderKey)
+
+
+
+    // -----------------会话操作-----------------------
+    @Query("SELECT * FROM signal_sessions WHERE sessionKey = :sessionKey AND userId = :userId")
+    fun getSession(sessionKey: String, userId: String): SignalSession?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun insertSession(session: SignalSession)
+
+    //getAllSessions(userId)
+    @Query("SELECT * FROM signal_sessions WHERE userId = :userId")
+    fun getAllSessions(userId: String): List<SignalSession>
+
+    //deleteSession(sessionKey, userId)
+    @Query("DELETE FROM signal_sessions WHERE sessionKey = :sessionKey AND userId = :userId")
+    fun deleteSession(sessionKey: String, userId: String)
+
+    //deleteAllSessionsForName
+    @Query("DELETE FROM signal_sessions WHERE sessionKey LIKE '%' || :name || '%' AND userId = :userId")
+    fun deleteAllSessionsForName(name: String, userId: String)
+
 
 
 
@@ -62,4 +91,5 @@ interface SignalKeyDao {
     // 获取好友的签名预密钥
     @Query("SELECT * FROM signal_signed_pre_keys WHERE userId = :friendId")
     fun getFriendSignedPreKeys(friendId: String): List<SignalSignedPreKey>
+
 }

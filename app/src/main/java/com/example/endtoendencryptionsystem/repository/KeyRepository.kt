@@ -64,6 +64,11 @@ class KeyRepository(val app: Application) {
         return signalKeyDao.getSession(sessionKey, userId)
     }
 
+    //getAllSessions
+    fun getAllSessions(userId: String): List<SignalSession> {
+        return signalKeyDao.getAllSessions(userId)
+    }
+
     fun saveSession(session: SignalSession) {
         signalKeyDao.insertSession(session)
     }
@@ -92,4 +97,23 @@ class KeyRepository(val app: Application) {
         signalKeyDao.insertSignedPreKey(signedPreKey)
     }
 
+    //getAllSignedPreKeys
+    fun getAllSignedPreKeys(userId: String): List<SignalSignedPreKey> {
+        return signalKeyDao.getAllSignedPreKeys(userId)
+    }
+
+    //deleteSignedPreKey
+    fun deleteSignedPreKey(keyId: Int, userId: String) {
+        signalKeyDao.deleteSignedPreKey(keyId, userId)
+    }
+
+    //deleteSession(sessionKey, userId)
+    fun deleteSession(sessionKey: String, userId: String) {
+        signalKeyDao.deleteSession(sessionKey, userId)
+    }
+
+    //deleteAllSessionsForName
+    fun deleteAllSessionsForName(sessionKey: String, userId: String) {
+        signalKeyDao.deleteAllSessionsForName(sessionKey, userId)
+    }
 }

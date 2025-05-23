@@ -131,6 +131,7 @@ class MyNativeModule : UniModule() {
     @UniJSMethod(uiThread = false)
     fun registerKey(address: String, callback: UniJSCallback) {
         try {
+            val currentUserId = MMKV.defaultMMKV().decodeLong("currentUserId").toString()
             Log.e("xxx", "注册走获取加密身份公钥等:$address")
             // 1. 创建持久化的 SignalProtocolStore
             val store = PersistentSignalProtocolStore(keyRepository, address)
@@ -201,7 +202,9 @@ class MyNativeModule : UniModule() {
 
     /**
      * 改进后的添加好友方法
+     * 有个思路：不如一加入好友就初始化会话，好友表插入一条好友数据后就调用初始化会话方法，在会话表插入与该好友的会话信息。
      */
+    @RequiresApi(Build.VERSION_CODES.O)
     @UniJSMethod(uiThread = false)
     fun addFriend(friendJson: String?, callback: UniJSCallback) {
         try {
@@ -213,66 +216,42 @@ class MyNativeModule : UniModule() {
                 friendId = user.id.toLong(),
                 friendNickName = user.nickName,
                 friendHeadImage = user.headImage,
-                preKeyBundleMaker = user.preKeyBundleMaker
+                preKeyBundleMaker = user.preKeyBundleMaker?:""
             )
             chatRepository.addFriend(friend)
-            // 2. 保存好友的预密钥信息到本地数据库
-            if(user.preKeyBundleMaker!=null){
-               var preKeyBundleMaker = user.preKeyBundleMaker as PreKeyBundleMaker
-               preKeyBundleMaker.preKeys?.forEach { preKey ->
-                   keyRepository.saveFriendPreKey(
-                       SignalPreKey(
-                           keyId = preKey.keyId,
-                           userId = user.id.toString(),
-                           keyPair = preKey.publicKey // 只存储公钥部分
-                       )
-                   )
-               }
+            //加入好友立刻初始化Session会话
+            initPrivateSession(friend.friendId.toString(), friend.preKeyBundleMaker!!)
+            callback.invoke(true)
+//            // 2. 保存好友的预密钥信息到本地数据库
+//            if(user.preKeyBundleMaker!=null){
+//               var preKeyBundleMaker = user.preKeyBundleMaker as PreKeyBundleMaker
+//               preKeyBundleMaker.preKeys?.forEach { preKey ->
+//                   keyRepository.saveFriendPreKey(
+//                       SignalPreKey(
+//                           keyId = preKey.keyId,
+//                           userId = user.id.toString(),
+//                           keyPair = preKey.publicKey // 只存储公钥部分
+//                       )
+//                   )
+//               }
+//
+//                preKeyBundleMaker.signedPreKeys?.forEach { signedPreKey ->
+//                    keyRepository.saveFriendSignedPreKey(
+//                        SignalSignedPreKey(
+//                            keyId = signedPreKey.keyId,
+//                            userId = user.id.toString(),
+//                            keyPair = signedPreKey.publicKey,
+//                            signature = signedPreKey.signature,
+//                            timestamp = signedPreKey.timestamp
+//                        )
+//                    )
+//                }
 
-                preKeyBundleMaker.signedPreKeys?.forEach { signedPreKey ->
-                    keyRepository.saveFriendSignedPreKey(
-                        SignalSignedPreKey(
-                            keyId = signedPreKey.keyId,
-                            userId = user.id.toString(),
-                            keyPair = signedPreKey.publicKey,
-                            signature = signedPreKey.signature,
-                            timestamp = signedPreKey.timestamp
-                        )
-                    )
-                }
-                callback.invoke(true)
-            }
+         //   }
         } catch (e: Exception) {
             callback.invoke(false)
         }
     }
-
-    /**
-     * 后台数据库接收到好友列表后，批量更新表
-     */
-//    @UniJSMethod(uiThread = false)
-//    fun addFriends(friendJson: String, callback: UniJSCallback) {
-//        Log.e(TAG, "接收到的好友信息：" + friendJson)
-//        try {
-//            var user = json.toObject<List<User>>(friendJson.toString())
-//            val currentUserId = MMKV.defaultMMKV().decodeLong("currentUserId")
-//            Log.e(TAG, "currentUserId：" + currentUserId)
-//            val friend = Friend(
-//                userId = currentUserId,
-//                friendId = user.id.toLong(),
-//                friendNickName = user.nickName,
-//                friendHeadImage = user.headImage,
-//                createdTime = user.createdTime,
-//                preKeyBundleMaker = user.preKeyBundleMaker,
-//                storeMaker = user.storeMaker)
-//            Log.e(TAG, "要添加的Friend信息：" + JSONObject.toJSONString(friend))
-//            chatRepository.addFriend(friend)
-//            callback.invoke(true)
-//        } catch (ignored: Exception) {
-//            Log.e(TAG, "添加好友报错信息：" + ignored.message)
-//            callback.invoke(false)
-//        }
-//    }
 
     /**
      * 根据好友Id获取好友信息
@@ -296,29 +275,25 @@ class MyNativeModule : UniModule() {
      * 改进后的建立私聊初始化会话方法
      */
     @RequiresApi(Build.VERSION_CODES.O)
-    @UniJSMethod(uiThread = false)
-    fun initPrivateSession(friendId: String, preKeyBundleJson: String, callback: UniJSCallback) {
+    fun initPrivateSession(friendId: String, preKeyBundleJson: String) {
         try {
             val currentUserId = MMKV.defaultMMKV().decodeLong("currentUserId").toString()
 
             // 1. 创建持久化的 SignalProtocolStore
             val store = PersistentSignalProtocolStore(keyRepository, currentUserId)
-
             // 2. 解析好友的密钥信息
             val preKeyBundleMaker = json.toObject<PreKeyBundleMaker>(preKeyBundleJson)
-
             // 3. 创建好友的 SignalProtocolAddress
             val friendAddress = SignalProtocolAddress(friendId, 1)
-
             // 4. 检查是否已存在会话
             if (store.containsSession(friendAddress)) {
                 Log.d("SessionInit", "Session already exists for friend: $friendId")
-                callback.invoke(true)
                 return
             }
-
+            Log.e("xxxx","prekey--->"+json.toJSONString(preKeyBundleMaker))
             // 5. 从新格式中获取密钥信息构建PreKeyBundle
-            var ecPublicKey = Base64.getDecoder().decode(preKeyBundleMaker.identityKey) as ECPublicKey
+            val identityKeyBytes = Base64.getDecoder().decode(preKeyBundleMaker.identityKey)
+            val ecPublicKey = Curve.decodePoint(identityKeyBytes, 0)
             val identityKey = IdentityKey(ecPublicKey)
 
             // 选择第一个可用的预密钥和签名预密钥
@@ -327,34 +302,125 @@ class MyNativeModule : UniModule() {
 
             if (preKey == null || signedPreKey == null) {
                 Log.e("SessionInit", "Missing required keys for friend: $friendId")
-                callback.invoke(false)
                 return
             }
-
             // 6. 构建PreKeyBundle
+            var ecPreKeyPublicKey = Curve.decodePoint(Base64.getDecoder().decode(preKey.publicKey), 0)
+            var ecSignedPreKeyPublicKey = Curve.decodePoint(Base64.getDecoder().decode(signedPreKey.publicKey), 0)
             val preKeyBundle = PreKeyBundle(
                 preKeyBundleMaker.registrationId,
                 1, // deviceId
                 preKey.keyId,
-                ECPublicKey(Base64.getDecoder().decode(preKey.publicKey)),
+                ecPreKeyPublicKey,
                 signedPreKey.keyId,
-                ECPublicKey(Base64.getDecoder().decode(signedPreKey.publicKey)),
+                ecSignedPreKeyPublicKey,
                 Base64.getDecoder().decode(signedPreKey.signature),
                 identityKey
             )
-
             // 7. 建立新会话
             val sessionBuilder = SessionBuilder(store, friendAddress)
             sessionBuilder.process(preKeyBundle)
-
             Log.d("SessionInit", "Session initialized successfully for friend: $friendId")
-            callback.invoke(true)
-
         } catch (e: Exception) {
             Log.e("SessionInit", "Failed to initialize session for friend: $friendId", e)
-            callback.invoke(false)
         }
     }
+
+    /**
+     * 私聊消息加密   TODO 解密失败可能是
+     * @param friendId 好友ID
+     * @param message 待加密的明文消息
+     * @param callback 回调函数
+     */
+    @RequiresApi(Build.VERSION_CODES.O)
+    @UniJSMethod(uiThread = false)
+    fun encryptPrivateMessage(friendId: String, message: String, callback: UniJSCallback) {
+        try {
+            val currentUserId = MMKV.defaultMMKV().decodeLong("currentUserId").toString()
+
+            // 1. 创建持久化的 SignalProtocolStore
+            val store = PersistentSignalProtocolStore(keyRepository, currentUserId)
+
+            // 2. 创建好友的 SignalProtocolAddress
+            val friendAddress = SignalProtocolAddress(friendId, 1)
+
+            // 3. 检查会话是否存在
+            if (!store.containsSession(friendAddress)) {
+                Log.e("Encrypt", "No session exists for friend: $friendId")
+                callback.invoke(null)
+                return
+            }
+
+            // 4. 创建SessionCipher进行加密
+            val sessionCipher = SessionCipher(store, friendAddress)
+            val ciphertext = sessionCipher.encrypt(message.toByteArray(StandardCharsets.UTF_8));
+            val rawCiphertext = ciphertext.serialize()
+            val encryptedMessage = PreKeySignalMessage(rawCiphertext)
+            // 5. 将加密结果编码为Base64
+            val encryptedBase64 = Base64.getEncoder().encodeToString(encryptedMessage.serialize())
+            callback.invoke(encryptedBase64)
+
+        } catch (e: Exception) {
+            Log.e("Encrypt", "Failed to encrypt message for friend: $friendId", e)
+            callback.invoke(null)
+        }
+    }
+
+    /**
+     * 私聊消息解密
+     * @param friendId 好友ID
+     * @param encryptedMessage Base64编码的加密消息
+     * @param callback 回调函数
+     */
+    @RequiresApi(Build.VERSION_CODES.O)
+    @UniJSMethod(uiThread = false)
+    fun decryptPrivateMessage(friendId: String, encryptedMessage: String, callback: UniJSCallback) {
+        try {
+            val currentUserId = MMKV.defaultMMKV().decodeLong("currentUserId").toString()
+
+            // 1. 创建持久化的 SignalProtocolStore
+            val store = PersistentSignalProtocolStore(keyRepository, currentUserId)
+
+            // 2. 创建好友的 SignalProtocolAddress
+            val friendAddress = SignalProtocolAddress(friendId, 1)
+
+            // 3. 检查会话是否存在
+            if (!store.containsSession(friendAddress)) {
+                Log.e("Decrypt", "No session exists for friend: $friendId")
+                callback.invoke("会话不存在")
+                return
+            }
+
+            // 4. 解码Base64消息
+            val encryptedBytes = Base64.getDecoder().decode(encryptedMessage)
+
+            // 5. 创建SessionCipher进行解密
+            val sessionCipher = SessionCipher(store, friendAddress)
+
+            // 6. 尝试解密（可能是PreKeySignalMessage或SignalMessage）
+            val decryptedBytes = try {
+                // 首先尝试作为PreKeySignalMessage解密
+                val preKeyMessage = PreKeySignalMessage(encryptedBytes)
+                sessionCipher.decrypt(preKeyMessage)
+            } catch (e: Exception) {
+                Log.e("xxxx","解密失败----："+e.message)
+                // 如果失败，尝试作为SignalMessage解密
+                val signalMessage = SignalMessage(encryptedBytes)
+                sessionCipher.decrypt(signalMessage)
+            }
+
+            // 7. 转换为字符串
+            val decryptedMessage = String(decryptedBytes, StandardCharsets.UTF_8)
+
+            Log.d("Decrypt", "Message decrypted successfully for friend: $friendId")
+            callback.invoke(decryptedMessage)
+
+        } catch (e: Exception) {
+            Log.e("Decrypt", "Failed to decrypt message for friend: $friendId", e)
+            callback.invoke("解密失败")
+        }
+    }
+
 
 //    /**
 //     * 相当复杂，我也没懂

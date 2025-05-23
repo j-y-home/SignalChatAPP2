@@ -52,6 +52,11 @@ class Friend(
     @ColumnInfo(name = "created_time")
     var createdTime: Date = Date(),
 
+    @ColumnInfo(name = "registration_id")
+    var registrationId:Int = 0,
+
+    var identityKey:String = "",
+
     /**
      * 预密钥
      */
