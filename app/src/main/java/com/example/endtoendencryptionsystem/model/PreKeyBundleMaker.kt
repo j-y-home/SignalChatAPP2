@@ -1,92 +1,28 @@
-package com.example.endtoendencryptionsystem.model;
+package com.example.endtoendencryptionsystem.model
+
+import androidx.room.PrimaryKey
+import com.example.endtoendencryptionsystem.entiy.database.key.SignalPreKey
+import com.example.endtoendencryptionsystem.entiy.database.key.SignalSignedPreKey
 
 /**
  * 注册到User信息里的
  */
-public class PreKeyBundleMaker {
-    int registrationId;
-    int deviceId;
-    int preKeyId;
-    String preKeyPublic; //ECPublicKey
-    int signedPreKeyId;
-    String signedPreKeyPublic; //ECPublicKey
-    String identityPreKeySignature; //byte []
-    String identityKey;  //IdentityKey
-    public PreKeyBundleMaker() {
-    }
+class PreKeyBundleMaker {
+    var identityKey: String? = null
+    var registrationId: Int = 0
+    var signedPreKeys: List<FriendSignedPreKey>? = null
 
-    public PreKeyBundleMaker(int registrationId, int deviceId, int preKeyId, String preKeyPublic, int signedPreKeyId, String signedPreKeyPublic, String identityPreKeySignature,String identityKey) {
-        this.registrationId = registrationId;
-        this.deviceId = deviceId;
-        this.preKeyId = preKeyId;
-        this.preKeyPublic = preKeyPublic;
-        this.signedPreKeyId = signedPreKeyId;
-        this.signedPreKeyPublic = signedPreKeyPublic;
-        this.identityPreKeySignature = identityPreKeySignature;
-        this.identityKey = identityKey;
-    }
-
-    public int getRegistrationId() {
-        return registrationId;
-    }
-
-    public void setRegistrationId(int registrationId) {
-        this.registrationId = registrationId;
-    }
-
-    public int getDeviceId() {
-        return deviceId;
-    }
-
-    public void setDeviceId(int deviceId) {
-        this.deviceId = deviceId;
-    }
-
-    public int getPreKeyId() {
-        return preKeyId;
-    }
-
-    public void setPreKeyId(int preKeyId) {
-        this.preKeyId = preKeyId;
-    }
-
-    public String getPreKeyPublic() {
-        return preKeyPublic;
-    }
-
-    public void setPreKeyPublic(String preKeyPublic) {
-        this.preKeyPublic = preKeyPublic;
-    }
-
-    public int getSignedPreKeyId() {
-        return signedPreKeyId;
-    }
-
-    public void setSignedPreKeyId(int signedPreKeyId) {
-        this.signedPreKeyId = signedPreKeyId;
-    }
-
-    public String getSignedPreKeyPublic() {
-        return signedPreKeyPublic;
-    }
-
-    public void setSignedPreKeyPublic(String signedPreKeyPublic) {
-        this.signedPreKeyPublic = signedPreKeyPublic;
-    }
-
-    public String getIdentityPreKeySignature() {
-        return identityPreKeySignature;
-    }
-
-    public void setIdentityPreKeySignature(String identityPreKeySignature) {
-        this.identityPreKeySignature = identityPreKeySignature;
-    }
-
-    public String getIdentityKey() {
-        return identityKey;
-    }
-
-    public void setIdentityKey(String identityKey) {
-        this.identityKey = identityKey;
-    }
+    var preKeys: List<FriendPreKey>? = null
 }
+
+class FriendPreKey(
+    val keyId: Int,
+    val publicKey: String
+)
+
+class FriendSignedPreKey(
+    val keyId: Int,
+    val publicKey: String,
+    val signature: String,
+    val timestamp: Long
+)

@@ -9,29 +9,35 @@ import com.alibaba.fastjson.JSON
 import com.alibaba.fastjson.JSONArray
 import com.alibaba.fastjson.JSONObject
 import com.example.endtoendencryptionsystem.ETEApplication.Companion.getInstance
+import com.example.endtoendencryptionsystem.entiy.PersistentSignalProtocolStore
 import com.example.endtoendencryptionsystem.entiy.database.ChatConversation
 import com.example.endtoendencryptionsystem.entiy.database.Friend
 import com.example.endtoendencryptionsystem.entiy.database.Group
 import com.example.endtoendencryptionsystem.entiy.database.PrivateMessage
 import com.example.endtoendencryptionsystem.entiy.database.User
+import com.example.endtoendencryptionsystem.entiy.database.key.SignalPreKey
+import com.example.endtoendencryptionsystem.entiy.database.key.SignalSignedPreKey
 import com.example.endtoendencryptionsystem.model.KeyPairsMaker
 import com.example.endtoendencryptionsystem.model.PreKeyBundleMaker
 import com.example.endtoendencryptionsystem.model.StoreMaker
 import com.example.endtoendencryptionsystem.repository.ChatRepository
-import com.example.endtoendencryptionsystem.rsa.Entity
-import com.example.endtoendencryptionsystem.rsa.Session
+import com.example.endtoendencryptionsystem.repository.KeyRepository
+
 import com.example.endtoendencryptionsystem.rsa.group.GroupCipherUtil
 import com.example.endtoendencryptionsystem.rsa.group.GroupSessionUtil
-import com.example.endtoendencryptionsystem.rsa.group.MySenderKeyStore
+
 import com.tencent.mmkv.MMKV
 import io.dcloud.feature.uniapp.annotation.UniJSMethod
 import io.dcloud.feature.uniapp.bridge.UniJSCallback
 import io.dcloud.feature.uniapp.common.UniModule
+import org.whispersystems.libsignal.IdentityKey
 import org.whispersystems.libsignal.InvalidKeyException
+import org.whispersystems.libsignal.SessionBuilder
 import org.whispersystems.libsignal.SessionCipher
 import org.whispersystems.libsignal.SignalProtocolAddress
 import org.whispersystems.libsignal.ecc.Curve
 import org.whispersystems.libsignal.ecc.ECKeyPair
+import org.whispersystems.libsignal.ecc.ECPublicKey
 import org.whispersystems.libsignal.groups.GroupSessionBuilder
 import org.whispersystems.libsignal.groups.SenderKeyName
 import org.whispersystems.libsignal.groups.state.SenderKeyStore
@@ -43,6 +49,7 @@ import org.whispersystems.libsignal.state.PreKeyBundle
 import org.whispersystems.libsignal.state.PreKeyRecord
 import org.whispersystems.libsignal.state.SignalProtocolStore
 import org.whispersystems.libsignal.state.SignedPreKeyRecord
+import org.whispersystems.libsignal.util.KeyHelper
 import java.nio.charset.StandardCharsets
 import java.util.Base64
 import java.util.Random
@@ -89,6 +96,7 @@ import java.util.concurrent.Executors
 class MyNativeModule : UniModule() {
     // 注册方法供 UniApp 调用（同步方法）
     private val chatRepository = ChatRepository(getInstance()!!)
+    private val keyRepository = KeyRepository(getInstance()!!)
     private val executor: Executor = Executors.newSingleThreadExecutor()
     private val TAG: String = "MyNativeModule"
     private var senderKeyStore: SenderKeyStore? = null
@@ -96,12 +104,12 @@ class MyNativeModule : UniModule() {
     private lateinit var sessionUtil: GroupSessionUtil
     private lateinit var selfAddress: SignalProtocolAddress
 
-    @SuppressLint("NotConstructor")
-    fun MyNativeModule(context: Context?) {
-        this.senderKeyStore = MySenderKeyStore()
-        this.cipherUtil = GroupCipherUtil(senderKeyStore)
-        this.sessionUtil = GroupSessionUtil(senderKeyStore)
-    }
+//    @SuppressLint("NotConstructor")
+//    fun MyNativeModule(context: Context?) {
+//        this.senderKeyStore = MySenderKeyStore()
+//        this.cipherUtil = GroupCipherUtil(senderKeyStore)
+//        this.sessionUtil = GroupSessionUtil(senderKeyStore)
+//    }
 
     /**
      * 存储当前登录的用户信息到sp
@@ -113,96 +121,128 @@ class MyNativeModule : UniModule() {
         MMKV.defaultMMKV().encode("currentUserId",currentUser.id)
         MMKV.defaultMMKV().encode("currentUser",currentUser)
     }
+
     /**
-     * TODO  改到登录时获取密钥并上传到服务器
-     * 因为注册时获取密钥并上传，逻辑会有问题：如果只是注册了，但是并未在该设备上登录（使用）
-     * 那本设备存的私钥也没用，再次用另一台设备登录时，本地没有私钥也没法使用。所以以登录为准，
-     * 登录才确定在该设备上使用。后续退出登录、或者登录状态失效的问题待定处理 TODO。
-     * 带回调的注册方法 ：生成身份公钥和一次性密钥
-     * 公钥 上传服务器
-     * 私钥 本地sharePreference存储
-     * uid:userId
+     * 改进后的注册密钥方法
+     * 返回的数据结构：
+     * {"identityKey":"BasPxq4TWBFD3tzMg2uou81fs5jY3Re2U+9Z73gB4jMF","registrationId":7736,"signedPreKeys":[{"publicKey":"BWCEIBQ9CADQYlLYPPHy9sc4qXu1FPLfol5+fe7S8iN7","keyId":3,"timestamp":1747905064570,"signature":"1jFq1HIbUDrv6w1lWT2mCJj2nW7WkCK4ibsnqMJM+46YOrdwrl/Zg99QykQc+lnk3393eGLhkQlJ3VlNw3T2DA=="}],"preKeys":[{"publicKey":"BSrHexwl3KpkdoOhDnJGORCQx1W2ZGddm+/Iru32v7oV","keyId":69}]}
      */
     @RequiresApi(api = Build.VERSION_CODES.O)
     @UniJSMethod(uiThread = false)
-    fun register(address: String, callback: UniJSCallback) {
-        val random = Random()
-        val preKeyId = random.nextInt(100)
-        val signedPreKeyId = random.nextInt(100)
-        var alice: Entity? = null
+    fun registerKey(address: String, callback: UniJSCallback) {
         try {
-            Log.e("xxx", "注册走获取加密身份公钥等:"+address)
-            alice = Entity(preKeyId, signedPreKeyId, address)
-            val registrationId = alice.getStore().getLocalRegistrationId()
-            val deviceId = alice.getPreKey().getDeviceId()
-            val preKeyPublic =
-                Base64.getEncoder().encodeToString(alice.getPreKey().getPreKey().serialize())
-            val signedPreKeyPublic =
-                Base64.getEncoder().encodeToString(alice.getPreKey().getSignedPreKey().serialize())
-            val identityPreKeySignature =
-                Base64.getEncoder().encodeToString(alice.getPreKey().getSignedPreKeySignature())
-            val identityKey = Base64.getEncoder().encodeToString(
-                alice.getStore().getIdentityKeyPair().getPublicKey().getPublicKey().serialize()
-            )
-            val preKeyBundleMaker = PreKeyBundleMaker(
-                registrationId,
-                deviceId,
-                preKeyId,
-                preKeyPublic,
-                signedPreKeyId,
-                signedPreKeyPublic,
-                identityPreKeySignature,
-                identityKey
-            )
-            //STORE
-            val storeIdentityKey = Base64.getEncoder().encodeToString(
-                alice.getStore().getIdentityKeyPair().getPublicKey().getPublicKey().serialize()
-            )
-            val storePrivateKey = Base64.getEncoder()
-                .encodeToString(alice.getStore().getIdentityKeyPair().getPrivateKey().serialize())
-            val storeMaker = StoreMaker(storeIdentityKey, storePrivateKey, registrationId)
-            val data = JSONObject()
-            Log.e(
-                "xxx",
-                "注册走获取加密身份公钥等:" + JSON.toJSON(preKeyBundleMaker) + "???" + JSON.toJSON(
-                    storeMaker
-                )
-            )
-            data.put("preKeyBundleMaker", JSON.toJSON(preKeyBundleMaker))
-            data.put("storeMaker", JSON.toJSON(storeMaker))
+            Log.e("xxx", "注册走获取加密身份公钥等:$address")
+            // 1. 创建持久化的 SignalProtocolStore
+            val store = PersistentSignalProtocolStore(keyRepository, address)
 
-            MMKV.defaultMMKV().encode("preKeyBundleMaker", JSON.toJSONString(preKeyBundleMaker))
-            MMKV.defaultMMKV().encode("storeMaker", JSON.toJSONString(storeMaker))
-            //把这两个值传给uniapp
+            // 2. 生成预密钥和签名预密钥
+            val random = Random()
+            val preKeyId = random.nextInt(100)
+            val signedPreKeyId = random.nextInt(100)
+
+            val preKeyPair = Curve.generateKeyPair()
+            val signedPreKeyPair = Curve.generateKeyPair()
+            val timestamp = System.currentTimeMillis()
+
+            // 3. 签名签名预密钥
+            val signedPreKeySignature = Curve.calculateSignature(
+                store.identityKeyPair.privateKey,
+                signedPreKeyPair.publicKey.serialize()
+            )
+
+            // 4. 存储密钥到数据库
+            val preKeyRecord = PreKeyRecord(preKeyId, preKeyPair)
+            val signedPreKeyRecord = SignedPreKeyRecord(
+                signedPreKeyId, timestamp, signedPreKeyPair, signedPreKeySignature
+            )
+
+            store.storePreKey(preKeyId, preKeyRecord)
+            store.storeSignedPreKey(signedPreKeyId, signedPreKeyRecord)
+
+            // 5. 构建返回给前端的数据（包含预密钥信息）
+            val data = JSONObject()
+
+            // 基本身份信息
+            data.put("registrationId", store.localRegistrationId)
+            data.put("identityKey", Base64.getEncoder().encodeToString(
+                store.identityKeyPair.publicKey.publicKey.serialize()
+            ))
+
+            // 预密钥信息
+            val preKeysArray = JSONArray()
+            val preKeyInfo = JSONObject()
+            preKeyInfo.put("keyId", preKeyId)
+            preKeyInfo.put("publicKey", Base64.getEncoder().encodeToString(
+                preKeyPair.publicKey.serialize()
+            ))
+            preKeysArray.add(preKeyInfo)
+            data.put("preKeys", preKeysArray)
+
+            // 签名预密钥信息
+            val signedPreKeysArray = JSONArray()
+            val signedPreKeyInfo = JSONObject()
+            signedPreKeyInfo.put("keyId", signedPreKeyId)
+            signedPreKeyInfo.put("publicKey", Base64.getEncoder().encodeToString(
+                signedPreKeyPair.publicKey.serialize()
+            ))
+            signedPreKeyInfo.put("signature", Base64.getEncoder().encodeToString(
+                signedPreKeySignature
+            ))
+            signedPreKeyInfo.put("timestamp", timestamp)
+            signedPreKeysArray.add(signedPreKeyInfo)
+            data.put("signedPreKeys", signedPreKeysArray)
             callback.invoke(data)
-        } catch (e: InvalidKeyException) {
+        } catch (e: Exception) {
+            Log.e("SignalError", "Key generation failed", e)
             callback.invoke(null)
         }
     }
 
+
     /**
-     * 添加好友
-     * 该方法获取到了好友信息，但它的数据结构是user表的结构,需要转换
+     * 改进后的添加好友方法
      */
     @UniJSMethod(uiThread = false)
     fun addFriend(friendJson: String?, callback: UniJSCallback) {
-        Log.e(TAG, "接收到的好友信息：" + friendJson)
         try {
-            var user = json.toObject<User>(friendJson.toString())
+            val user = json.toObject<User>(friendJson.toString())
             val currentUserId = MMKV.defaultMMKV().decodeLong("currentUserId")
-            Log.e(TAG, "currentUserId：" + currentUserId)
+            // 1. 保存好友基本信息
             val friend = Friend(
                 userId = currentUserId,
                 friendId = user.id.toLong(),
                 friendNickName = user.nickName,
                 friendHeadImage = user.headImage,
-                createdTime = user.createdTime,
-                preKeyBundleMaker = user.preKeyBundleMaker)
-            Log.e(TAG, "要添加的Friend信息：" + JSONObject.toJSONString(friend))
+                preKeyBundleMaker = user.preKeyBundleMaker
+            )
             chatRepository.addFriend(friend)
-            callback.invoke(true)
-        } catch (ignored: Exception) {
-            Log.e(TAG, "添加好友报错信息：" + ignored.message)
+            // 2. 保存好友的预密钥信息到本地数据库
+            if(user.preKeyBundleMaker!=null){
+               var preKeyBundleMaker = user.preKeyBundleMaker as PreKeyBundleMaker
+               preKeyBundleMaker.preKeys?.forEach { preKey ->
+                   keyRepository.saveFriendPreKey(
+                       SignalPreKey(
+                           keyId = preKey.keyId,
+                           userId = user.id.toString(),
+                           keyPair = preKey.publicKey // 只存储公钥部分
+                       )
+                   )
+               }
+
+                preKeyBundleMaker.signedPreKeys?.forEach { signedPreKey ->
+                    keyRepository.saveFriendSignedPreKey(
+                        SignalSignedPreKey(
+                            keyId = signedPreKey.keyId,
+                            userId = user.id.toString(),
+                            keyPair = signedPreKey.publicKey,
+                            signature = signedPreKey.signature,
+                            timestamp = signedPreKey.timestamp
+                        )
+                    )
+                }
+                callback.invoke(true)
+            }
+        } catch (e: Exception) {
             callback.invoke(false)
         }
     }
@@ -251,113 +291,178 @@ class MyNativeModule : UniModule() {
         return friend
     }
 
+
     /**
-     * 相当复杂，我也没懂
-     * 初始化获取aliceToBobSession
+     * 改进后的建立私聊初始化会话方法
      */
-    @RequiresApi(api = Build.VERSION_CODES.O)
-    fun initAliceToBobSession(message: String?, friend: Friend): Session? {
-        Log.e("xxxx", "初始化initAliceToBobSession：" + message)
-        /**
-         * 每次的加密解密，都需要一个aliceToBobSession对象，要创建这个对象，需要一些密钥信息
-         * signalProtocolStore
-         * bobPreKeyBundle
-         * signalProtocolAddress
-         */
-        val aliceToBobSession: Session?
-        val signalProtocolStore: SignalProtocolStore?
-        val signalProtocolAddress: SignalProtocolAddress?
-        val privateKeys = MMKV.defaultMMKV().decodeString("privates")
-        Log.e("xxxx", "本地存储的privates:" + privateKeys)
-        val keyPairsMaker =
-            JSONObject.parseObject<KeyPairsMaker>(privateKeys, KeyPairsMaker::class.java)
-        var decodedPrivateKey: ByteArray? = null
-        val bobPreKeyBundle: PreKeyBundle?
-        val alicePreKeyBundle: PreKeyBundle?
-        //2, 获取bobPreKeyBundle
-        var bobPreKeyBundleMaker = checkNotNull(json.toObject<PreKeyBundleMaker>(friend.preKeyBundleMaker.toString()))
-        bobPreKeyBundle = PreKeyBundleCreatorUtil.createPreKeyBundle(bobPreKeyBundleMaker)
+    @RequiresApi(Build.VERSION_CODES.O)
+    @UniJSMethod(uiThread = false)
+    fun initPrivateSession(friendId: String, preKeyBundleJson: String, callback: UniJSCallback) {
+        try {
+            val currentUserId = MMKV.defaultMMKV().decodeLong("currentUserId").toString()
 
-        //3,获取alicePreKeyBundle
-        var alicePreKeyBundleMaker = checkNotNull(
-            json.toObject<PreKeyBundleMaker>(MMKV.defaultMMKV().decodeString("preKeyBundleMaker").toString()))
+            // 1. 创建持久化的 SignalProtocolStore
+            val store = PersistentSignalProtocolStore(keyRepository, currentUserId)
 
-        alicePreKeyBundle = PreKeyBundleCreatorUtil.createPreKeyBundle(alicePreKeyBundleMaker)
+            // 2. 解析好友的密钥信息
+            val preKeyBundleMaker = json.toObject<PreKeyBundleMaker>(preKeyBundleJson)
 
-        //4,获取aliceStoreMaker
-        val aliceStoreMaker = json.toObject<StoreMaker>(MMKV.defaultMMKV().decodeString("storeMaker")
-            .toString())
+            // 3. 创建好友的 SignalProtocolAddress
+            val friendAddress = SignalProtocolAddress(friendId, 1)
 
-        checkNotNull(keyPairsMaker)
-        decodedPrivateKey = Base64.getDecoder().decode(keyPairsMaker.getPreKeyPairPrivateKey())
-        val ecPrivateKey = Curve.decodePrivatePoint(decodedPrivateKey)
-        val ecKeyPair = ECKeyPair(alicePreKeyBundle.getPreKey(), ecPrivateKey)
-        val preKeyRecord = PreKeyRecord(alicePreKeyBundle.getPreKeyId(), ecKeyPair)
+            // 4. 检查是否已存在会话
+            if (store.containsSession(friendAddress)) {
+                Log.d("SessionInit", "Session already exists for friend: $friendId")
+                callback.invoke(true)
+                return
+            }
 
-        val decodedSignedPrivateKey =
-            Base64.getDecoder().decode(keyPairsMaker.getSignedPreKeySignaturePrivateKey())
-        val signedPrivateKey = Curve.decodePrivatePoint(decodedSignedPrivateKey)
-        val signedPreKeyPair = ECKeyPair(alicePreKeyBundle.getSignedPreKey(), signedPrivateKey)
+            // 5. 从新格式中获取密钥信息构建PreKeyBundle
+            var ecPublicKey = Base64.getDecoder().decode(preKeyBundleMaker.identityKey) as ECPublicKey
+            val identityKey = IdentityKey(ecPublicKey)
 
-        val signedPreKeyRecord = SignedPreKeyRecord(
-            alicePreKeyBundle.getSignedPreKeyId(),
-            keyPairsMaker.getTimestamp(),
-            signedPreKeyPair,
-            alicePreKeyBundle.getSignedPreKeySignature()
-        )
+            // 选择第一个可用的预密钥和签名预密钥
+            val preKey = preKeyBundleMaker.preKeys?.firstOrNull()
+            val signedPreKey = preKeyBundleMaker.signedPreKeys?.firstOrNull()
 
-        //初始化signalProtocolStore
-        checkNotNull(aliceStoreMaker)
-        signalProtocolStore =
-            InMemorySignalProtocolStoreCreatorUtil.createStore(aliceStoreMaker)
-        signalProtocolStore.storePreKey(alicePreKeyBundle.getPreKeyId(), preKeyRecord)
-        signalProtocolStore.storeSignedPreKey(
-            alicePreKeyBundle.getSignedPreKeyId(),
-            signedPreKeyRecord
-        )
+            if (preKey == null || signedPreKey == null) {
+                Log.e("SessionInit", "Missing required keys for friend: $friendId")
+                callback.invoke(false)
+                return
+            }
 
-        //初始化signalProtocolAddress userId和设备id组成“端”的唯一标识，目前只做单端，即一个用户只在一个设备上。
-        signalProtocolAddress = SignalProtocolAddress(friend.id.toString(), 1)
+            // 6. 构建PreKeyBundle
+            val preKeyBundle = PreKeyBundle(
+                preKeyBundleMaker.registrationId,
+                1, // deviceId
+                preKey.keyId,
+                ECPublicKey(Base64.getDecoder().decode(preKey.publicKey)),
+                signedPreKey.keyId,
+                ECPublicKey(Base64.getDecoder().decode(signedPreKey.publicKey)),
+                Base64.getDecoder().decode(signedPreKey.signature),
+                identityKey
+            )
 
-        aliceToBobSession = Session(signalProtocolStore, bobPreKeyBundle, signalProtocolAddress)
-        return aliceToBobSession
+            // 7. 建立新会话
+            val sessionBuilder = SessionBuilder(store, friendAddress)
+            sessionBuilder.process(preKeyBundle)
+
+            Log.d("SessionInit", "Session initialized successfully for friend: $friendId")
+            callback.invoke(true)
+
+        } catch (e: Exception) {
+            Log.e("SessionInit", "Failed to initialize session for friend: $friendId", e)
+            callback.invoke(false)
+        }
     }
 
-    /**
-     * 私聊的加密解密
-     * 加密解密先放在一个方法里
-     * encrypt 1:加密，0：解密
-     * 带回调的加密解密方法
-     * message 待加密消息
-     * receiverPreKeyBundleMakerJson 接收者的preKeyBundleMaker
-     * sendPreKeyBundleMakerJson 发送者的preKeyBundleMaker
-     */
-    @UniJSMethod(uiThread = false)
-    fun encrypt(encrypt: Int, message: String, friendJson: String, callback: UniJSCallback) {
-        Log.e(
-            "xxxx",
-            "当前操作类型：" + encrypt + "   接收者Id:" + friendJson + "  收到的消息：" + message
-        )
-        var signalCipherText: String? = "未正确加密消息"
-        var decryptedMsg: String? = "未正确解密消息"
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            // Get the session from database
-            val session = chatRepository.getOrCreateSession(userId, friendId)
-            // Encrypt or decrypt
-            val result = if (encrypt == 1) {
-                val encryptedMessage = session.encrypt(message)
-                // Important: Save the updated session state after encryption
-                chatRepository.updateSession(friendId, 1, session)
-                val result = Base64.getEncoder().encodeToString(encryptedMessage.serialize())
-            } else {
-                val ds = Base64.getDecoder().decode(message)
-                var toBobMessageDecrypt = PreKeySignalMessage(ds)
-                val decryptedMessage = session.decrypt(toBobMessageDecrypt)
-                chatRepository.updateSession(friendId, 1, session)
-                val result = decryptedMessage
-            }
-            callback.invoke(result)
-        }
+//    /**
+//     * 相当复杂，我也没懂
+//     * 初始化获取aliceToBobSession
+//     */
+//    @RequiresApi(api = Build.VERSION_CODES.O)
+//    fun initAliceToBobSession(message: String?, friend: Friend): Session? {
+//        Log.e("xxxx", "初始化initAliceToBobSession：" + message)
+//        /**
+//         * 每次的加密解密，都需要一个aliceToBobSession对象，要创建这个对象，需要一些密钥信息
+//         * signalProtocolStore
+//         * bobPreKeyBundle
+//         * signalProtocolAddress
+//         */
+//        val aliceToBobSession: Session?
+//        val signalProtocolStore: SignalProtocolStore?
+//        val signalProtocolAddress: SignalProtocolAddress?
+//        val privateKeys = MMKV.defaultMMKV().decodeString("privates")
+//        Log.e("xxxx", "本地存储的privates:" + privateKeys)
+//        val keyPairsMaker =
+//            JSONObject.parseObject<KeyPairsMaker>(privateKeys, KeyPairsMaker::class.java)
+//        var decodedPrivateKey: ByteArray? = null
+//        val bobPreKeyBundle: PreKeyBundle?
+//        val alicePreKeyBundle: PreKeyBundle?
+//        //2, 获取bobPreKeyBundle
+//        var bobPreKeyBundleMaker = checkNotNull(json.toObject<PreKeyBundleMaker>(friend.preKeyBundleMaker.toString()))
+//        bobPreKeyBundle = PreKeyBundleCreatorUtil.createPreKeyBundle(bobPreKeyBundleMaker)
+//
+//        //3,获取alicePreKeyBundle
+//        var alicePreKeyBundleMaker = checkNotNull(
+//            json.toObject<PreKeyBundleMaker>(MMKV.defaultMMKV().decodeString("preKeyBundleMaker").toString()))
+//
+//        alicePreKeyBundle = PreKeyBundleCreatorUtil.createPreKeyBundle(alicePreKeyBundleMaker)
+//
+//        //4,获取aliceStoreMaker
+//        val aliceStoreMaker = json.toObject<StoreMaker>(MMKV.defaultMMKV().decodeString("storeMaker")
+//            .toString())
+//
+//        checkNotNull(keyPairsMaker)
+//        decodedPrivateKey = Base64.getDecoder().decode(keyPairsMaker.getPreKeyPairPrivateKey())
+//        val ecPrivateKey = Curve.decodePrivatePoint(decodedPrivateKey)
+//        val ecKeyPair = ECKeyPair(alicePreKeyBundle.getPreKey(), ecPrivateKey)
+//        val preKeyRecord = PreKeyRecord(alicePreKeyBundle.getPreKeyId(), ecKeyPair)
+//
+//        val decodedSignedPrivateKey =
+//            Base64.getDecoder().decode(keyPairsMaker.getSignedPreKeySignaturePrivateKey())
+//        val signedPrivateKey = Curve.decodePrivatePoint(decodedSignedPrivateKey)
+//        val signedPreKeyPair = ECKeyPair(alicePreKeyBundle.getSignedPreKey(), signedPrivateKey)
+//
+//        val signedPreKeyRecord = SignedPreKeyRecord(
+//            alicePreKeyBundle.getSignedPreKeyId(),
+//            keyPairsMaker.getTimestamp(),
+//            signedPreKeyPair,
+//            alicePreKeyBundle.getSignedPreKeySignature()
+//        )
+//
+//        //初始化signalProtocolStore
+//        checkNotNull(aliceStoreMaker)
+//        signalProtocolStore =
+//            InMemorySignalProtocolStoreCreatorUtil.createStore(aliceStoreMaker)
+//        signalProtocolStore.storePreKey(alicePreKeyBundle.getPreKeyId(), preKeyRecord)
+//        signalProtocolStore.storeSignedPreKey(
+//            alicePreKeyBundle.getSignedPreKeyId(),
+//            signedPreKeyRecord
+//        )
+//
+//        //初始化signalProtocolAddress userId和设备id组成“端”的唯一标识，目前只做单端，即一个用户只在一个设备上。
+//        signalProtocolAddress = SignalProtocolAddress(friend.id.toString(), 1)
+//
+//        aliceToBobSession = Session(signalProtocolStore, bobPreKeyBundle, signalProtocolAddress)
+//        return aliceToBobSession
+//    }
+
+//    /**
+//     * 私聊的加密解密
+//     * 加密解密先放在一个方法里
+//     * encrypt 1:加密，0：解密
+//     * 带回调的加密解密方法
+//     * message 待加密消息
+//     * receiverPreKeyBundleMakerJson 接收者的preKeyBundleMaker
+//     * sendPreKeyBundleMakerJson 发送者的preKeyBundleMaker
+//     */
+//    @UniJSMethod(uiThread = false)
+//    fun encrypt(encrypt: Int, message: String, friendJson: String, callback: UniJSCallback) {
+//        Log.e(
+//            "xxxx",
+//            "当前操作类型：" + encrypt + "   接收者Id:" + friendJson + "  收到的消息：" + message
+//        )
+//        var signalCipherText: String? = "未正确加密消息"
+//        var decryptedMsg: String? = "未正确解密消息"
+//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+//            // Get the session from database
+//            val session = chatRepository.getOrCreateSession(userId, friendId)
+//            // Encrypt or decrypt
+//            val result = if (encrypt == 1) {
+//                val encryptedMessage = session.encrypt(message)
+//                // Important: Save the updated session state after encryption
+//                chatRepository.updateSession(friendId, 1, session)
+//                val result = Base64.getEncoder().encodeToString(encryptedMessage.serialize())
+//            } else {
+//                val ds = Base64.getDecoder().decode(message)
+//                var toBobMessageDecrypt = PreKeySignalMessage(ds)
+//                val decryptedMessage = session.decrypt(toBobMessageDecrypt)
+//                chatRepository.updateSession(friendId, 1, session)
+//                val result = decryptedMessage
+//            }
+//            callback.invoke(result)
+//        }
 
 
 
@@ -386,8 +491,8 @@ class MyNativeModule : UniModule() {
 //            } else {
 //                Log.e("xxxx", "初始化Session失败：")
 //            }
-        }
-    }
+
+ //   }
 
     /**
      * 新增一条私聊消息
@@ -741,54 +846,54 @@ class MyNativeModule : UniModule() {
     }
 
 
-    /**
-     * 加密Sender Key的过程
-     * 群组成员生成自己的群组发送密钥，加密该密钥后，发送给其他群组成员。
-     */
-    @RequiresApi(Build.VERSION_CODES.O)
-    fun encryptSenderKeyFor1to1(userId: String?, recipientId: String?, senderKeyDistribution: String): String {
-        // 使用与recipientId之间的1:1会话密钥加密senderKeyDistribution
-        val cipher: SessionCipher =
-            SessionCipher(signalProtocolStore, SignalProtocolAddress(recipientId, 1))
-        val encrypted: CiphertextMessage = cipher.encrypt(senderKeyDistribution.toByteArray())
-        return Base64.getEncoder().encodeToString(encrypted.serialize())
-    }
-
-    /**
-     *  解密Sender Key的过程
-     */
-    @RequiresApi(Build.VERSION_CODES.O)
-    fun decryptSenderKeyFrom1to1(senderId: String?, encryptedSenderKey: String?): String {
-        // 使用与senderId之间的1:1会话密钥解密
-        val cipher = SessionCipher(signalProtocolStore, SignalProtocolAddress(senderId, 1))
-        val encryptedBytes: ByteArray? = Base64.getDecoder().decode(encryptedSenderKey)
-        val plaintextBytes: ByteArray? = cipher.decrypt(SignalMessage(encryptedBytes))
-        return kotlin.text.String(plaintextBytes!!)
-    }
-
-    // 分发群组密钥（安全版本）
-    private fun distributeGroupKey(
-        groupId: String?, members: List<String?>,
-        distributionMessage: SenderKeyDistributionMessage
-    ) {
-        val serializedMessage = distributionMessage.serialize()
-        // 对每个成员使用一对一加密会话发送密钥
-        for (memberId in members) {
-            if (memberId != selfAddress.getName()) {
-                // 1. 获取与该成员的一对一加密会话
-                val memberAddress = SignalProtocolAddress(memberId, 1)
-                val sessionCipher = SessionCipher(protocolStore, memberAddress)
-                // 2. 使用一对一会话加密群组密钥分发消息
-                val encryptedDistributionMessage = sessionCipher.encrypt(serializedMessage)
-
-
-                // 3. 发送加密后的分发消息
-                // networkService.sendEncryptedDistributionMessage(
-                //     memberId,
-                //     encryptedDistributionMessage.serialize(),
-                //     encryptedDistributionMessage.getType()
-                // );
-            }
-        }
-    }
+//    /**
+//     * 加密Sender Key的过程
+//     * 群组成员生成自己的群组发送密钥，加密该密钥后，发送给其他群组成员。
+//     */
+//    @RequiresApi(Build.VERSION_CODES.O)
+//    fun encryptSenderKeyFor1to1(userId: String?, recipientId: String?, senderKeyDistribution: String): String {
+//        // 使用与recipientId之间的1:1会话密钥加密senderKeyDistribution
+//        val cipher: SessionCipher =
+//            SessionCipher(signalProtocolStore, SignalProtocolAddress(recipientId, 1))
+//        val encrypted: CiphertextMessage = cipher.encrypt(senderKeyDistribution.toByteArray())
+//        return Base64.getEncoder().encodeToString(encrypted.serialize())
+//    }
+//
+//    /**
+//     *  解密Sender Key的过程
+//     */
+//    @RequiresApi(Build.VERSION_CODES.O)
+//    fun decryptSenderKeyFrom1to1(senderId: String?, encryptedSenderKey: String?): String {
+//        // 使用与senderId之间的1:1会话密钥解密
+//        val cipher = SessionCipher(signalProtocolStore, SignalProtocolAddress(senderId, 1))
+//        val encryptedBytes: ByteArray? = Base64.getDecoder().decode(encryptedSenderKey)
+//        val plaintextBytes: ByteArray? = cipher.decrypt(SignalMessage(encryptedBytes))
+//        return kotlin.text.String(plaintextBytes!!)
+//    }
+//
+//    // 分发群组密钥（安全版本）
+//    private fun distributeGroupKey(
+//        groupId: String?, members: List<String?>,
+//        distributionMessage: SenderKeyDistributionMessage
+//    ) {
+//        val serializedMessage = distributionMessage.serialize()
+//        // 对每个成员使用一对一加密会话发送密钥
+//        for (memberId in members) {
+//            if (memberId != selfAddress.getName()) {
+//                // 1. 获取与该成员的一对一加密会话
+//                val memberAddress = SignalProtocolAddress(memberId, 1)
+//                val sessionCipher = SessionCipher(protocolStore, memberAddress)
+//                // 2. 使用一对一会话加密群组密钥分发消息
+//                val encryptedDistributionMessage = sessionCipher.encrypt(serializedMessage)
+//
+//
+//                // 3. 发送加密后的分发消息
+//                // networkService.sendEncryptedDistributionMessage(
+//                //     memberId,
+//                //     encryptedDistributionMessage.serialize(),
+//                //     encryptedDistributionMessage.getType()
+//                // );
+//            }
+//        }
+//    }
 }

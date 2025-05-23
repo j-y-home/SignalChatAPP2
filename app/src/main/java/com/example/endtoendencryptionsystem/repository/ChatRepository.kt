@@ -13,10 +13,8 @@ import com.example.endtoendencryptionsystem.entiy.database.Group
 import com.example.endtoendencryptionsystem.entiy.database.GroupChatMessage
 import com.example.endtoendencryptionsystem.entiy.database.PrivateChatMessage
 import com.example.endtoendencryptionsystem.entiy.database.PrivateMessage
-import com.example.endtoendencryptionsystem.entiy.database.SenderKeyEntity
-import com.example.endtoendencryptionsystem.entiy.database.SignalSessionEntity
 import com.example.endtoendencryptionsystem.enums.MessageStatus
-import com.example.endtoendencryptionsystem.rsa.Session
+
 import com.example.endtoendencryptionsystem.utils.json
 import com.example.endtoendencryptionsystem.utils.toJSONString
 import com.example.endtoendencryptionsystem.utils.toObject
@@ -34,126 +32,124 @@ class ChatRepository(val app: Application) {
     private val privateChatMessageDao = db.privateChatMessageDao()
     private val groupChatMessageDao = db.groupChatMessageDao()
     private val groupDao = db.groupDao()
-    private val senderKeyDao = db.senderKeyDao()
-    private val signalSessionDao = db.signalSessionDao()
     private val TAG: String = "ChatRepository"
 
 
+//
+//    fun getOrCreateSession(userId: String, friendId: String): Session {
+//        try {
+//            // Check if session exists in database
+//            val sessionEntity = signalSessionDao.getSession(friendId, 1)
+//            if (sessionEntity != null) {
+//                return deserializeSession(userId, friendId, sessionEntity.sessionData)
+//            } else {
+//                val session = initializeNewSession(userId, friendId)
+//                storeSession(friendId, 1, serializeSession(session))
+//                return session
+//            }
+//        } catch (e: Exception) {
+//            Log.e(TAG, "Error getting or creating session", e)
+//            throw RuntimeException("Failed to get or create session", e)
+//        }
+//    }
+//    /**
+//     * Initialize a new Signal Protocol session with a friend
+//     * @param userId Current user ID
+//     * @param friendId Friend's ID
+//     * @return Initialized Session object
+//     */
+//    fun initializeNewSession(userId: String, friendId: String): Session {
+//        try {
+//            // Get the user's identity key pair and registration ID
+//            val identityKeyPair = getIdentityKeyPairFromDatabase(userId)
+//            val registrationId = getRegistrationIdFromDatabase(userId)
+//
+//            // Create protocol store backed by database
+//            val protocolStore = DatabaseSignalProtocolStore(chatRepository, identityKeyPair, registrationId)
+//
+//            // Get friend's preKeyBundle from database
+//            val friend = chatRepository.selectFriendsByFriendId(friendId.toLong())
+//            val bobPreKeyBundleMaker = checkNotNull(json.toObject<PreKeyBundleMaker>(friend.preKeyBundleMaker.toString()))
+//            val bobPreKeyBundle = PreKeyBundleCreatorUtil.createPreKeyBundle(bobPreKeyBundleMaker)
+//
+//            // Create recipient address
+//            val recipientAddress = SignalProtocolAddress(friendId, 1)
+//
+//            // Create and return session
+//            return Session(protocolStore, bobPreKeyBundle, recipientAddress)
+//        } catch (e: Exception) {
+//            Log.e(TAG, "Error initializing new session", e)
+//            throw RuntimeException("Failed to initialize new session", e)
+//        }
+//    }
+//    private fun deserializeSession(userId: String, friendId: String, sessionData: ByteArray): Session {
+//        // Get the user's identity key pair and registration ID
+//        val identityKeyPair = getIdentityKeyPairFromDatabase(userId)
+//        val registrationId = getRegistrationIdFromDatabase(userId)
+//        // Create protocol store backed by database
+//        val protocolStore = DatabaseSignalProtocolStore(this, identityKeyPair, registrationId)
+//        // Get friend's preKeyBundle from database
+//        val friend = selectFriendsByFriendId(friendId.toLong())
+//        val bobPreKeyBundleMaker = checkNotNull(json.toObject<PreKeyBundleMaker>(friend.preKeyBundleMaker.toString()))
+//        val bobPreKeyBundle = PreKeyBundleCreatorUtil.createPreKeyBundle(bobPreKeyBundleMaker)
+//        // Create recipient address
+//        val recipientAddress = SignalProtocolAddress(friendId, 1)
+//
+//        // Create session with existing state
+//        return Session(protocolStore, bobPreKeyBundle, recipientAddress, sessionData)
+//    }
+//    /**
+//     * Store a Signal Protocol session in the database
+//     * @param address Recipient address
+//     * @param deviceId Recipient device ID
+//     * @param sessionData Serialized session data
+//     * @return Success status
+//     */
+//    fun storeSession(address: String, deviceId: Int, sessionData: ByteArray): Boolean {
+//        return try {
+//            signalSessionDao.insertOrUpdate(SignalSessionEntity(address, deviceId, sessionData))
+//            true
+//        } catch (e: Exception) {
+//            Log.e(TAG, "Error storing session", e)
+//            false
+//        }
+//    }
+//    /**
+//     * Helper method to serialize a session for database storage
+//     */
+//    private fun serializeSession(session: Session): ByteArray {
+//        // This would need to be implemented in the Session class
+//        return session.se
+//    }
 
-    fun getOrCreateSession(userId: String, friendId: String): Session {
-        try {
-            // Check if session exists in database
-            val sessionEntity = signalSessionDao.getSession(friendId, 1)
-            if (sessionEntity != null) {
-                return deserializeSession(userId, friendId, sessionEntity.sessionData)
-            } else {
-                val session = initializeNewSession(userId, friendId)
-                storeSession(friendId, 1, serializeSession(session))
-                return session
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error getting or creating session", e)
-            throw RuntimeException("Failed to get or create session", e)
-        }
-    }
-    /**
-     * Initialize a new Signal Protocol session with a friend
-     * @param userId Current user ID
-     * @param friendId Friend's ID
-     * @return Initialized Session object
-     */
-    fun initializeNewSession(userId: String, friendId: String): Session {
-        try {
-            // Get the user's identity key pair and registration ID
-            val identityKeyPair = getIdentityKeyPairFromDatabase(userId)
-            val registrationId = getRegistrationIdFromDatabase(userId)
-
-            // Create protocol store backed by database
-            val protocolStore = DatabaseSignalProtocolStore(chatRepository, identityKeyPair, registrationId)
-
-            // Get friend's preKeyBundle from database
-            val friend = chatRepository.selectFriendsByFriendId(friendId.toLong())
-            val bobPreKeyBundleMaker = checkNotNull(json.toObject<PreKeyBundleMaker>(friend.preKeyBundleMaker.toString()))
-            val bobPreKeyBundle = PreKeyBundleCreatorUtil.createPreKeyBundle(bobPreKeyBundleMaker)
-
-            // Create recipient address
-            val recipientAddress = SignalProtocolAddress(friendId, 1)
-
-            // Create and return session
-            return Session(protocolStore, bobPreKeyBundle, recipientAddress)
-        } catch (e: Exception) {
-            Log.e(TAG, "Error initializing new session", e)
-            throw RuntimeException("Failed to initialize new session", e)
-        }
-    }
-    private fun deserializeSession(userId: String, friendId: String, sessionData: ByteArray): Session {
-        // Get the user's identity key pair and registration ID
-        val identityKeyPair = getIdentityKeyPairFromDatabase(userId)
-        val registrationId = getRegistrationIdFromDatabase(userId)
-        // Create protocol store backed by database
-        val protocolStore = DatabaseSignalProtocolStore(this, identityKeyPair, registrationId)
-        // Get friend's preKeyBundle from database
-        val friend = selectFriendsByFriendId(friendId.toLong())
-        val bobPreKeyBundleMaker = checkNotNull(json.toObject<PreKeyBundleMaker>(friend.preKeyBundleMaker.toString()))
-        val bobPreKeyBundle = PreKeyBundleCreatorUtil.createPreKeyBundle(bobPreKeyBundleMaker)
-        // Create recipient address
-        val recipientAddress = SignalProtocolAddress(friendId, 1)
-
-        // Create session with existing state
-        return Session(protocolStore, bobPreKeyBundle, recipientAddress, sessionData)
-    }
-    /**
-     * Store a Signal Protocol session in the database
-     * @param address Recipient address
-     * @param deviceId Recipient device ID
-     * @param sessionData Serialized session data
-     * @return Success status
-     */
-    fun storeSession(address: String, deviceId: Int, sessionData: ByteArray): Boolean {
-        return try {
-            signalSessionDao.insertOrUpdate(SignalSessionEntity(address, deviceId, sessionData))
-            true
-        } catch (e: Exception) {
-            Log.e(TAG, "Error storing session", e)
-            false
-        }
-    }
-    /**
-     * Helper method to serialize a session for database storage
-     */
-    private fun serializeSession(session: Session): ByteArray {
-        // This would need to be implemented in the Session class
-        return session.se
-    }
-
-    /**
-     * Update an existing session in the database
-     * @param friendId Friend's ID
-     * @param deviceId Device ID (usually 1)
-     * @param sessionData Serialized session data
-     * @return Success status
-     */
-    fun updateSession(friendId: String, deviceId: Int, session: Session): Boolean {
-        return try {
-            // Check if session exists
-            val existingSession = db.signalSessionDao().getSession(friendId, deviceId)
-            if (existingSession != null) {
-                // Update existing session
-                db.signalSessionDao().insertOrUpdate(
-                    SignalSessionEntity(friendId, deviceId, serializeSession(session))
-                )
-            } else {
-                // Insert new session
-                db.signalSessionDao().insertOrUpdate(
-                    SignalSessionEntity(friendId, deviceId, serializeSession(session))
-                )
-            }
-            true
-        } catch (e: Exception) {
-            Log.e(TAG, "Error updating session", e)
-            false
-        }
-    }
+//    /**
+//     * Update an existing session in the database
+//     * @param friendId Friend's ID
+//     * @param deviceId Device ID (usually 1)
+//     * @param sessionData Serialized session data
+//     * @return Success status
+//     */
+//    fun updateSession(friendId: String, deviceId: Int, session: Session): Boolean {
+//        return try {
+//            // Check if session exists
+//            val existingSession = db.signalSessionDao().getSession(friendId, deviceId)
+//            if (existingSession != null) {
+//                // Update existing session
+//                db.signalSessionDao().insertOrUpdate(
+//                    SignalSessionEntity(friendId, deviceId, serializeSession(session))
+//                )
+//            } else {
+//                // Insert new session
+//                db.signalSessionDao().insertOrUpdate(
+//                    SignalSessionEntity(friendId, deviceId, serializeSession(session))
+//                )
+//            }
+//            true
+//        } catch (e: Exception) {
+//            Log.e(TAG, "Error updating session", e)
+//            false
+//        }
+//    }
 
     /**
      * 获取当前用户的所有好友
@@ -763,15 +759,15 @@ class ChatRepository(val app: Application) {
     fun clearGroup(){
         groupDao.deleteGroup()
     }
-
-    /**
-     * 插入或更新群聊的发送者密钥
-     */
-    fun insertOrUpdateSenderKey(senderKeyEntity: SenderKeyEntity){
-        senderKeyDao.insertOrUpdate(senderKeyEntity)
-    }
-
-    fun getSenderKey(keyId: String): SenderKeyEntity? {
-        return senderKeyDao.getById(keyId)
-    }
+//
+//    /**
+//     * 插入或更新群聊的发送者密钥
+//     */
+//    fun insertOrUpdateSenderKey(senderKeyEntity: SenderKeyEntity){
+//        senderKeyDao.insertOrUpdate(senderKeyEntity)
+//    }
+//
+//    fun getSenderKey(keyId: String): SenderKeyEntity? {
+//        return senderKeyDao.getById(keyId)
+//    }
 }
