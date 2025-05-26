@@ -93,7 +93,7 @@ class MyNativeModule : UniModule() {
 
 //    @SuppressLint("NotConstructor")
 //    fun MyNativeModule(context: Context?) {
-//        this.senderKeyStore = MySenderKeyStore()
+    //    this.senderKeyStore = MySenderKeyStore()
 //        this.cipherUtil = GroupCipherUtil(senderKeyStore)
 //        this.sessionUtil = GroupSessionUtil(senderKeyStore)
 //    }
@@ -560,15 +560,13 @@ class MyNativeModule : UniModule() {
      * 更新群聊
      */
     @UniJSMethod(uiThread = false)
-    fun updateGroup(groupJson: String, callback: UniJSCallback){
-        Log.e(TAG, "接收到的群聊信息：" + groupJson)
+    fun updateGroup(groupJson: String){
+        Log.e(TAG, "接收到的群组信息：" + groupJson)
         try {
             var group = json.toObject<Group>(groupJson)
             chatRepository.updateGroup(group)
-            callback.invoke(true)
         } catch (ignored: Exception) {
-            Log.e(TAG, "更新群聊报错信息：" + ignored.message)
-            callback.invoke(false)
+            Log.e(TAG, "更新群组报错信息：" + ignored.message)
         }
     }
 
@@ -602,12 +600,16 @@ class MyNativeModule : UniModule() {
 
     @RequiresApi(Build.VERSION_CODES.O)
     @UniJSMethod(uiThread = false)
-    fun createGroupSession(groupId: String,userId: String, callback: UniJSCallback) {
+    fun createGroupSession(groupId: String,callback: UniJSCallback) {
         executor.execute(Runnable {
             try {
-                // 创建发送者地址
-                selfAddress = SignalProtocolAddress(userId.toString(), 1)
-                // 创建发送者密钥分发消息
+                val currentUserId = MMKV.defaultMMKV().decodeLong("currentUserId").toString()
+                // 1.创建发送者地址
+                selfAddress = SignalProtocolAddress(currentUserId.toString(), 1)
+                // 2.创建持久化的 SignalProtocolStore
+                val store = PersistentSignalProtocolStore(keyRepository, currentUserId)
+                sessionUtil = GroupSessionUtil(store)
+                // 3.创建发送者密钥分发消息
                 val distributionMessage = sessionUtil.createSenderKeyDistribution(groupId,selfAddress)
                 // 序列化分发消息
                 val serializedMessage = Base64.getEncoder().encodeToString(distributionMessage.serialize())
