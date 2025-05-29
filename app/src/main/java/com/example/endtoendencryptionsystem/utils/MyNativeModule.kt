@@ -626,7 +626,6 @@ class MyNativeModule : UniModule() {
     @UniJSMethod(uiThread = false)
     fun createGroupSession(groupId: String,uniJSCallback: UniJSCallback) {
         try {
-            keyRepository.deletePreKey()
             val currentUserId = MMKV.defaultMMKV().decodeLong("currentUserId").toString()
             // 1.创建发送者地址
             selfAddress = SignalProtocolAddress(currentUserId.toString(), 1)
