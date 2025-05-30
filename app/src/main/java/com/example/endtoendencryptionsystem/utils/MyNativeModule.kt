@@ -404,6 +404,7 @@ class MyNativeModule : UniModule() {
     }
 
     /**
+     * 在消息页面操作每一条消息的长按事件--删除该聊天，给出提示，确认后执行删除会话及其消息。
      * 删除会话及其关联的消息
      */
     @UniJSMethod(uiThread = false)
@@ -570,7 +571,24 @@ class MyNativeModule : UniModule() {
     @UniJSMethod(uiThread = false)
     fun deleteGroup(groupId: Long, callback: UniJSCallback) {
         try {
+            val currentUserId = MMKV.defaultMMKV().decodeLong("currentUserId").toString()
             chatRepository.deleteGroup(groupId)
+            keyRepository.deleteSenderKeysByGroupId(groupId.toString(),currentUserId)
+            callback.invoke(true)
+        } catch (ignored: Exception) {
+            Log.e(TAG, "删除群聊报错信息：" + ignored.message)
+            callback.invoke(false)
+        }
+    }
+
+    /**
+     * 删除群聊密钥
+     */
+    @UniJSMethod(uiThread = false)
+    fun deleteGroupKeys(groupId: Long, callback: UniJSCallback) {
+        try {
+            val currentUserId = MMKV.defaultMMKV().decodeLong("currentUserId").toString()
+            keyRepository.deleteSenderKeysByGroupId(groupId.toString(),currentUserId)
             callback.invoke(true)
         } catch (ignored: Exception) {
             Log.e(TAG, "删除群聊报错信息：" + ignored.message)
@@ -593,6 +611,20 @@ class MyNativeModule : UniModule() {
      * 成员变更时，重新生成该密钥
      *
      * 群主创建群，有新成员加入时，新成员创建新的群聊会话session，并分发给所有老成员
+     *
+     * 简单版不行，还是需要signal本身的逻辑。
+     *
+     * 目前剩余的功能：
+     * 群聊部分：
+     * 1，成员退出群||被踢出群，目前是只在群组表标记quit=1，不显示该群组。本地群聊和群聊会话表都保留，可看，但不可发消息了。
+     * 2，成员删除群聊（消息页的会话长按删除事件吗，会提示），在本地清空群聊表和该条群聊会话表
+     * 3，群主解散群，如何处理成员本地的数据库表？
+     * 4，不管是一天更新一次密钥，还是有新成员加入时更新密钥，都要确保如何让不在线成员也能生成并分发新的密钥。
+     *
+     * 私聊部分：
+     * 1，图片和文件的处理。
+     * 2，好友本地数据库表的处理。
+     * 3，私聊会话表的处理。
      *
      */
     @RequiresApi(Build.VERSION_CODES.O)
@@ -621,12 +653,20 @@ class MyNativeModule : UniModule() {
 
     /**
      * 创建群组发送者密钥
+     * //TODO 解散群聊  把 该群组的所有密钥删除
      */
     @RequiresApi(Build.VERSION_CODES.O)
     @UniJSMethod(uiThread = false)
-    fun createGroupSession(groupId: String,uniJSCallback: UniJSCallback) {
+    fun createGroupSession(groupId: String, type: String, uniJSCallback: UniJSCallback) {
         try {
             val currentUserId = MMKV.defaultMMKV().decodeLong("currentUserId").toString()
+
+            if(type == "退出"){
+                //删除发送者密钥。当有成员退出时，老成员需要更新密钥。需要删除再重新创建，否则不会创建。
+                keyRepository.deleteSenderKey("$groupId::$currentUserId::1")
+                //TODO 后期加入该退出成员的密钥删除
+            }
+
             // 1.创建发送者地址
             selfAddress = SignalProtocolAddress(currentUserId.toString(), 1)
             // 2.创建持久化的 SignalProtocolStore

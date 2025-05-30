@@ -9,6 +9,7 @@ import com.example.endtoendencryptionsystem.entiy.database.key.SignalPreKey
 import com.example.endtoendencryptionsystem.entiy.database.key.SignalSenderKey
 import com.example.endtoendencryptionsystem.entiy.database.key.SignalSession
 import com.example.endtoendencryptionsystem.entiy.database.key.SignalSignedPreKey
+import org.whispersystems.libsignal.groups.SenderKeyName
 
 /**
  * 密钥相关的操作DAO
@@ -59,6 +60,12 @@ interface SignalKeyDao {
       
     @Insert(onConflict = OnConflictStrategy.REPLACE)  
     fun insertSenderKey(senderKey: SignalSenderKey)
+
+    @Query("DELETE FROM signal_sender_keys WHERE senderKeyName = :senderKeyName ")
+    fun deleteSenderKey(senderKeyName: String)
+
+    @Query("DELETE FROM signal_sender_keys WHERE senderKeyName LIKE :groupId || '%' AND userId = :userId")
+    fun deleteSenderKeysByGroupId(groupId: String, userId: String)
 
 
 

@@ -8,7 +8,8 @@ import androidx.room.PrimaryKey
 data class SignalSenderKey(  
     @PrimaryKey
     val senderKeyName: String, // groupId + address组合
-    val userId: String,  
+    val userId: String,
+    val groupId:Int,
     val senderKeyRecord: String, // 序列化的SenderKeyRecord  
     val createdTime: Long = System.currentTimeMillis()  
 )

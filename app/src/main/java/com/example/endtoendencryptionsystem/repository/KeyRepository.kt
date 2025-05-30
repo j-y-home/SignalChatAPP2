@@ -78,7 +78,16 @@ class KeyRepository(val app: Application) {
     }
 
     fun saveSenderKey(senderKey: SignalSenderKey) {
+        Log.e("xxxx","走这儿？"+ JSON.toJSONString(senderKey))
         signalKeyDao.insertSenderKey(senderKey)
+    }
+
+    fun deleteSenderKey(senderKeyName: String){
+        signalKeyDao.deleteSenderKey(senderKeyName)
+    }
+
+    fun deleteSenderKeysByGroupId(groupId:String,userId:String){
+        signalKeyDao.deleteSenderKeysByGroupId(groupId,userId)
     }
 
 
