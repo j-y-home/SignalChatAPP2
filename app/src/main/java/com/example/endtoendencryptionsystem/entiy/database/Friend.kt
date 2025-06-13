@@ -16,19 +16,19 @@ import java.util.Date
  * 好友表
  * friendId不可重复
  */
-@Entity(tableName = "im_friend",indices = [Index(value = ["friend_id"], unique = true)])
+@Entity(tableName = "im_friend",indices = [Index(value = ["user_id", "friend_id"], unique = true)])
 @Parcelize
 class Friend(
     /**
      * id
      */
     @PrimaryKey(autoGenerate = true)
-    var id:Int= -1,
+    var id:Int? =null,
     /**
      * 用户id
      */
     @ColumnInfo(name = "user_id")
-    var userId: Long?,
+    var userId: Int,
     /**
      * 好友id
      */
@@ -51,11 +51,6 @@ class Friend(
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     @ColumnInfo(name = "created_time")
     var createdTime: Date = Date(),
-
-    @ColumnInfo(name = "registration_id")
-    var registrationId:Int = 0,
-
-    var identityKey:String = "",
 
     /**
      * 预密钥

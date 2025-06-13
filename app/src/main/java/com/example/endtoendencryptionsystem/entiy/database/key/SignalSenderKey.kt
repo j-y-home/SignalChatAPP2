@@ -9,7 +9,7 @@ data class SignalSenderKey(
     @PrimaryKey
     val senderKeyName: String, // groupId + address组合
     val userId: String,
-    val groupId:Int,
+    val groupId:String,
     val senderKeyRecord: String, // 序列化的SenderKeyRecord  
     val createdTime: Long = System.currentTimeMillis()  
 )

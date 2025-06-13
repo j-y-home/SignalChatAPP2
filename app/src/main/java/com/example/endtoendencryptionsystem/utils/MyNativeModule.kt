@@ -194,7 +194,7 @@ class MyNativeModule : UniModule() {
             val currentUserId = MMKV.defaultMMKV().decodeLong("currentUserId")
             // 1. 保存好友基本信息
             val friend = Friend(
-                userId = currentUserId,
+                userId = currentUserId.toInt(),
                 friendId = user.id.toLong(),
                 friendNickName = user.nickName,
                 friendHeadImage = user.headImage,
@@ -216,7 +216,6 @@ class MyNativeModule : UniModule() {
      */
     fun getFriendInfoById(friendId: Long): Friend {
         val list: MutableList<Friend> = chatRepository.selectAllData() as MutableList<Friend>
-        Log.e(TAG, list.size.toString() + "数据库好友表全部数据：" + JSONObject.toJSONString(list))
         var friend: Friend? = null
         friend = chatRepository.selectFriendsByFriendId(friendId)
         if(friend == null){
@@ -448,20 +447,20 @@ class MyNativeModule : UniModule() {
         })
     }
 
-    @UniJSMethod(uiThread = false)
-    fun getAllChats(userId: String, callback: UniJSCallback) {
-        executor.execute({
-            try {
-                val userIdLong = userId.toLong()
-                val result = chatRepository.getAllChats(userIdLong)
-                Log.e(TAG,"获取到本地数据库消息："+json.toJSONString(result))
-                callback.invoke(result)
-            } catch (e: java.lang.Exception) {
-                Log.e(TAG, "Error in getAllChats", e)
-                callback.invoke(JSONObject())
-            }
-        })
-    }
+//    @UniJSMethod(uiThread = false)
+//    fun getAllChats(userId: String, callback: UniJSCallback) {
+//        executor.execute({
+//            try {
+//                val userIdLong = userId.toLong()
+//                val result = chatRepository.getAllChats(userIdLong)
+//                Log.e(TAG,"获取到本地数据库消息："+json.toJSONString(result))
+//                callback.invoke(result)
+//            } catch (e: java.lang.Exception) {
+//                Log.e(TAG, "Error in getAllChats", e)
+//                callback.invoke(JSONObject())
+//            }
+//        })
+//    }
 
     @UniJSMethod(uiThread = false)
     fun deleteChats(userId: String, chatsToDelete: JSONArray, callback: UniJSCallback) {
@@ -622,7 +621,7 @@ class MyNativeModule : UniModule() {
      * 4，不管是一天更新一次密钥，还是有新成员加入时更新密钥，都要确保如何让不在线成员也能生成并分发新的密钥。
      *
      * 私聊部分：
-     * 1，图片和文件的处理。
+     * 1，图片和文件的处理（）。
      * 2，好友本地数据库表的处理。
      * 3，私聊会话表的处理。
      *

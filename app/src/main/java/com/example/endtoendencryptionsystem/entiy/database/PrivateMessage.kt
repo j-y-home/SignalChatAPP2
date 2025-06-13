@@ -3,8 +3,11 @@ package com.example.endtoendencryptionsystem.entiy.database
 import android.os.Parcelable
 import androidx.room.ColumnInfo
 import androidx.room.Entity
+import androidx.room.Ignore
 import androidx.room.PrimaryKey
+import com.chad.library.adapter.base.entity.MultiItemEntity
 import com.fasterxml.jackson.annotation.JsonFormat
+import kotlinx.parcelize.IgnoredOnParcel
 import kotlinx.parcelize.Parcelize
 import java.util.Date
 
@@ -14,7 +17,7 @@ import java.util.Date
  */
 @Entity(tableName = "im_private_message")
 @Parcelize
-class PrivateMessage(
+class PrivateMessage (
     /**
      * id
      */
@@ -55,4 +58,7 @@ class PrivateMessage(
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     var sendTime: Date?,
 
-) : Parcelable
+) : Parcelable, MultiItemEntity{
+    @Ignore
+    override var itemType: Int = 0
+}

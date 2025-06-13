@@ -14,12 +14,10 @@ import com.example.endtoendencryptionsystem.entiy.database.GroupChatMessage
 import com.example.endtoendencryptionsystem.entiy.database.PrivateChatMessage
 import com.example.endtoendencryptionsystem.entiy.database.PrivateMessage
 import com.example.endtoendencryptionsystem.enums.MessageStatus
-
 import com.example.endtoendencryptionsystem.utils.json
 import com.example.endtoendencryptionsystem.utils.toJSONString
 import com.example.endtoendencryptionsystem.utils.toObject
 import com.tencent.mmkv.MMKV
-import org.whispersystems.libsignal.util.ByteUtil
 
 
 class ChatRepository(val app: Application) {
@@ -34,122 +32,6 @@ class ChatRepository(val app: Application) {
     private val groupDao = db.groupDao()
     private val TAG: String = "ChatRepository"
 
-
-//
-//    fun getOrCreateSession(userId: String, friendId: String): Session {
-//        try {
-//            // Check if session exists in database
-//            val sessionEntity = signalSessionDao.getSession(friendId, 1)
-//            if (sessionEntity != null) {
-//                return deserializeSession(userId, friendId, sessionEntity.sessionData)
-//            } else {
-//                val session = initializeNewSession(userId, friendId)
-//                storeSession(friendId, 1, serializeSession(session))
-//                return session
-//            }
-//        } catch (e: Exception) {
-//            Log.e(TAG, "Error getting or creating session", e)
-//            throw RuntimeException("Failed to get or create session", e)
-//        }
-//    }
-//    /**
-//     * Initialize a new Signal Protocol session with a friend
-//     * @param userId Current user ID
-//     * @param friendId Friend's ID
-//     * @return Initialized Session object
-//     */
-//    fun initializeNewSession(userId: String, friendId: String): Session {
-//        try {
-//            // Get the user's identity key pair and registration ID
-//            val identityKeyPair = getIdentityKeyPairFromDatabase(userId)
-//            val registrationId = getRegistrationIdFromDatabase(userId)
-//
-//            // Create protocol store backed by database
-//            val protocolStore = DatabaseSignalProtocolStore(chatRepository, identityKeyPair, registrationId)
-//
-//            // Get friend's preKeyBundle from database
-//            val friend = chatRepository.selectFriendsByFriendId(friendId.toLong())
-//            val bobPreKeyBundleMaker = checkNotNull(json.toObject<PreKeyBundleMaker>(friend.preKeyBundleMaker.toString()))
-//            val bobPreKeyBundle = PreKeyBundleCreatorUtil.createPreKeyBundle(bobPreKeyBundleMaker)
-//
-//            // Create recipient address
-//            val recipientAddress = SignalProtocolAddress(friendId, 1)
-//
-//            // Create and return session
-//            return Session(protocolStore, bobPreKeyBundle, recipientAddress)
-//        } catch (e: Exception) {
-//            Log.e(TAG, "Error initializing new session", e)
-//            throw RuntimeException("Failed to initialize new session", e)
-//        }
-//    }
-//    private fun deserializeSession(userId: String, friendId: String, sessionData: ByteArray): Session {
-//        // Get the user's identity key pair and registration ID
-//        val identityKeyPair = getIdentityKeyPairFromDatabase(userId)
-//        val registrationId = getRegistrationIdFromDatabase(userId)
-//        // Create protocol store backed by database
-//        val protocolStore = DatabaseSignalProtocolStore(this, identityKeyPair, registrationId)
-//        // Get friend's preKeyBundle from database
-//        val friend = selectFriendsByFriendId(friendId.toLong())
-//        val bobPreKeyBundleMaker = checkNotNull(json.toObject<PreKeyBundleMaker>(friend.preKeyBundleMaker.toString()))
-//        val bobPreKeyBundle = PreKeyBundleCreatorUtil.createPreKeyBundle(bobPreKeyBundleMaker)
-//        // Create recipient address
-//        val recipientAddress = SignalProtocolAddress(friendId, 1)
-//
-//        // Create session with existing state
-//        return Session(protocolStore, bobPreKeyBundle, recipientAddress, sessionData)
-//    }
-//    /**
-//     * Store a Signal Protocol session in the database
-//     * @param address Recipient address
-//     * @param deviceId Recipient device ID
-//     * @param sessionData Serialized session data
-//     * @return Success status
-//     */
-//    fun storeSession(address: String, deviceId: Int, sessionData: ByteArray): Boolean {
-//        return try {
-//            signalSessionDao.insertOrUpdate(SignalSessionEntity(address, deviceId, sessionData))
-//            true
-//        } catch (e: Exception) {
-//            Log.e(TAG, "Error storing session", e)
-//            false
-//        }
-//    }
-//    /**
-//     * Helper method to serialize a session for database storage
-//     */
-//    private fun serializeSession(session: Session): ByteArray {
-//        // This would need to be implemented in the Session class
-//        return session.se
-//    }
-
-//    /**
-//     * Update an existing session in the database
-//     * @param friendId Friend's ID
-//     * @param deviceId Device ID (usually 1)
-//     * @param sessionData Serialized session data
-//     * @return Success status
-//     */
-//    fun updateSession(friendId: String, deviceId: Int, session: Session): Boolean {
-//        return try {
-//            // Check if session exists
-//            val existingSession = db.signalSessionDao().getSession(friendId, deviceId)
-//            if (existingSession != null) {
-//                // Update existing session
-//                db.signalSessionDao().insertOrUpdate(
-//                    SignalSessionEntity(friendId, deviceId, serializeSession(session))
-//                )
-//            } else {
-//                // Insert new session
-//                db.signalSessionDao().insertOrUpdate(
-//                    SignalSessionEntity(friendId, deviceId, serializeSession(session))
-//                )
-//            }
-//            true
-//        } catch (e: Exception) {
-//            Log.e(TAG, "Error updating session", e)
-//            false
-//        }
-//    }
 
     /**
      * 获取当前用户的所有好友
@@ -359,14 +241,14 @@ class ChatRepository(val app: Application) {
             val messages: MutableList<Any?> = ArrayList<Any?>()
             if ("PRIVATE" == type) {
                 val privateMessages: MutableList<PrivateChatMessage?> =
-                        privateChatMessageDao.getMessagesForConversation(conversation.getId(), offset,limit)
+                        privateChatMessageDao.getMessagesForConversation(conversation.id, offset,limit)
                 for (msg in privateMessages) {
                     messages.add(msg)
                 }
             } else if ("GROUP" == type) {
                 // 类似处理群聊消息...
                 val groupChatMessages: MutableList<GroupChatMessage?> =
-                    groupChatMessageDao.getMessagesForConversation(conversation.getId(), offset,limit)
+                    groupChatMessageDao.getMessagesForConversation(conversation.id, offset,limit)
                 for (msg in groupChatMessages) {
                     messages.add(msg)
                 }
@@ -402,12 +284,13 @@ class ChatRepository(val app: Application) {
                 // 保存会话，获取会话ID
                 val conversationId: Long
                 val existingConversation: ChatConversation? = chatConversationDao.getConversation(
-                        userId, conversation.getTargetId(), conversation.getType())
+                        userId, conversation.targetId, conversation.type
+                )
 
                 if (existingConversation != null) {
-                    conversation.setId(existingConversation.getId())
+                    conversation.id = existingConversation.id
                     chatConversationDao.updateConversation(conversation)
-                    conversationId = existingConversation.getId()
+                    conversationId = existingConversation.id
                 } else {
                     conversationId = chatConversationDao.insertConversation(conversation)
                 }
@@ -420,9 +303,9 @@ class ChatRepository(val app: Application) {
                     for (key in messagesObj.keys) {
                         messagesArray.add(messagesObj.getJSONObject(key))
                     }
-                    if ("PRIVATE" == conversation.getType()) {
+                    if ("PRIVATE" == conversation.type) {
                         savePrivateMessages(messagesArray, conversationId)
-                    } else if ("GROUP" == conversation.getType()) {
+                    } else if ("GROUP" == conversation.type) {
                         saveGroupMessages(messagesArray, conversationId)
                     }
                 }
@@ -571,55 +454,55 @@ class ChatRepository(val app: Application) {
     fun loadChatIndex(userId: Long): String? {
         return MMKV.defaultMMKV().decodeString("chats-app-" + userId)
     }
-
-    /**
-     * 初始时，获取所有会话
-     * 加载前20条消息
-     */
-    fun getAllChats(userId: Long): JSONObject {
-        try {
-            // 获取元数据
-            var metadata: ChatMetadata? = metadataDao.getMetadata(userId)
-            if (metadata == null) {
-                metadata = ChatMetadata()
-                metadata.setUserId(userId)
-                metadata.setPrivateMsgMaxId(0)
-                metadata.setGroupMsgMaxId(0)
-                metadata.setLastUpdateTime(System.currentTimeMillis())
-            }
-            // 获取所有会话
-            val conversations: MutableList<ChatConversation> =
-                chatConversationDao.getAllConversations(userId)
-            // 为每个会话加载消息
-            for (conversation in conversations) {
-                conversation.isStored = true
-                // 根据会话类型加载不同类型的消息
-                if ("PRIVATE" == conversation.getType()) {
-                    val messages: MutableList<PrivateChatMessage?> =
-                        privateChatMessageDao.getMessagesForConversation(conversation.getId(), 0, 20)
-                    for (message in messages) {
-                        conversation.messages.add(message)
-                    }
-                } else if ("GROUP" == conversation.getType()) {
-                    val messages: MutableList<GroupChatMessage?> =
-                        groupChatMessageDao.getMessagesForConversation(conversation.getId(), 0, 20)
-                    for (message in messages) {
-                        conversation.messages.add(message)
-                    }
-                }
-            }
-
-            // 构建返回数据
-            val result = JSONObject()
-            result.put("chats", conversations)
-            result.put("privateMsgMaxId", metadata.getPrivateMsgMaxId())
-            result.put("groupMsgMaxId", metadata.getGroupMsgMaxId())
-            return result
-        } catch (e: Exception) {
-            Log.e("xxx", "Error in getAllChats", e)
-            return JSONObject()
-        }
-    }
+//
+//    /**
+//     * 初始时，获取所有会话
+//     * 加载前20条消息
+//     */
+//    fun getAllChats(userId: Long): JSONObject {
+//        try {
+//            // 获取元数据
+//            var metadata: ChatMetadata? = metadataDao.getMetadata(userId)
+//            if (metadata == null) {
+//                metadata = ChatMetadata()
+//                metadata.setUserId(userId)
+//                metadata.setPrivateMsgMaxId(0)
+//                metadata.setGroupMsgMaxId(0)
+//                metadata.setLastUpdateTime(System.currentTimeMillis())
+//            }
+//            // 获取所有会话
+//            val conversations: MutableList<ChatConversation> =
+//                chatConversationDao.getAllConversations(userId)
+//            // 为每个会话加载消息
+//            for (conversation in conversations) {
+//                conversation.isStored = true
+//                // 根据会话类型加载不同类型的消息
+//                if ("PRIVATE" == conversation.type) {
+//                    val messages: MutableList<PrivateChatMessage?> =
+//                        privateChatMessageDao.getMessagesForConversation(conversation.id, 0, 20)
+//                    for (message in messages) {
+//                        conversation.messages.add(message)
+//                    }
+//                } else if ("GROUP" == conversation.type) {
+//                    val messages: MutableList<GroupChatMessage?> =
+//                        groupChatMessageDao.getMessagesForConversation(conversation.id, 0, 20)
+//                    for (message in messages) {
+//                        conversation.messages.add(message)
+//                    }
+//                }
+//            }
+//
+//            // 构建返回数据
+//            val result = JSONObject()
+//            result.put("chats", conversations)
+//            result.put("privateMsgMaxId", metadata.getPrivateMsgMaxId())
+//            result.put("groupMsgMaxId", metadata.getGroupMsgMaxId())
+//            return result
+//        } catch (e: Exception) {
+//            Log.e("xxx", "Error in getAllChats", e)
+//            return JSONObject()
+//        }
+//    }
 
     /**
      * 删除消息
@@ -650,8 +533,8 @@ class ChatRepository(val app: Application) {
                     val type = chatJson.getString("type")
                     val targetId = chatJson.getLong("targetId")
                     // 标记会话为已删除
-                    chatConversationDao
-                        .markConversationAsDeleted(userId, targetId, type)
+//                    chatConversationDao
+//                        .markConversationAsDeleted(userId, targetId, type)
                 }
             })
             return true

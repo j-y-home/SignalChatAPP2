@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="48dp"
+    android:background="@color/white">
+
+   <ImageView
+       android:id="@+id/iv_back"
+       android:layout_width="35dp"
+       android:layout_height="35dp"
+       android:layout_centerVertical="true"
+       android:layout_marginRight="5dp"
+       android:clickable="true"
+       android:src="@mipmap/icon_top_back_default" />
+   <TextView
+       android:id="@+id/tv_title"
+       android:layout_width="wrap_content"
+       android:layout_height="wrap_content"
+       android:layout_centerInParent="true"
+       android:layout_centerVertical="true"
+       android:text="加密通讯"
+       android:textColor="@color/common_top_title"
+       android:textSize="16sp" />
+
+   <ImageView
+       android:id="@+id/iv_add"
+       android:layout_width="35dp"
+       android:layout_height="35dp"
+       android:layout_alignParentRight="true"
+       android:layout_centerVertical="true"
+       android:layout_marginRight="5dp"
+       android:clickable="true"
+       android:src="@mipmap/icon_main_activity_add_normal" />
+
+   <ImageView
+       android:id="@+id/iv_search"
+       android:layout_width="35dp"
+       android:layout_height="35dp"
+       android:layout_centerVertical="true"
+       android:layout_toLeftOf="@id/iv_add"
+       android:clickable="true"
+       android:src="@mipmap/icon_main_activity_search_normal" />
+   <ImageView
+       android:id="@+id/iv_settings"
+       android:layout_width="35dp"
+       android:layout_height="35dp"
+       android:layout_centerVertical="true"
+       android:clickable="true"
+       android:layout_alignParentRight="true"
+       android:visibility="gone"
+       android:src="@mipmap/icon_setting_default" />
+</RelativeLayout>

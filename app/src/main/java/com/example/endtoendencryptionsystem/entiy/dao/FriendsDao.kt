@@ -22,6 +22,12 @@ interface FriendsDao {
     fun selectFriendsByFriendId(id: Long): Friend
 
     /**
+     * 批量插入好友
+     */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun insertFriends(templates: List<Friend>)
+
+    /**
      * 添加好友
      * 添加好友的时机：现在Uniapp做的是点击了“加好友”按钮，就互相为好友了（friends表同时新增两条数据）
      */
@@ -36,4 +42,10 @@ interface FriendsDao {
      */
     @Query("DELETE FROM im_friend")
     fun deleteAllFriends()
+
+    /**
+     * 根据好友id删除好友
+     */
+    @Query("DELETE FROM im_friend WHERE friend_id = :id")
+    fun deleteFriendById(id: Long)
 }

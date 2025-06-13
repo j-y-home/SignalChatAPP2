@@ -2,27 +2,29 @@ package com.example.endtoendencryptionsystem.entiy.database;
 
 import androidx.annotation.NonNull;
 import androidx.room.Entity;
-import androidx.room.ForeignKey;  
-import androidx.room.Index;  
+import androidx.room.ForeignKey;
+import androidx.room.Index;
 import androidx.room.PrimaryKey;
+
+import com.chad.library.adapter.base.entity.MultiItemEntity;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-@Entity(  
-    tableName = "private_chat_message",  
-    foreignKeys = @ForeignKey(  
-        entity = ChatConversation.class,  
-        parentColumns = "id",  
-        childColumns = "conversationId",  
-        onDelete = ForeignKey.CASCADE  
-    ),  
-    indices = {  
+@Entity(
+    tableName = "private_chat_message",
+    foreignKeys = @ForeignKey(
+        entity = ChatConversation.class,
+        parentColumns = "id",
+        childColumns = "conversationId",
+        onDelete = ForeignKey.CASCADE
+    ),
+    indices = {
         @Index("conversationId"),
-        @Index("sendTime")  
-    }  
-)  
-public class PrivateChatMessage {
+        @Index("sendTime")
+    }
+)
+public class PrivateChatMessage implements MultiItemEntity {
     @PrimaryKey
     @NonNull
     private String messageId;
@@ -134,6 +136,13 @@ public class PrivateChatMessage {
     public void setLoadStatus(String loadStatus) {
         this.loadStatus = loadStatus;
     }
-    // Getters and setters
-    // ...  
+
+    @Override
+    public int getItemType() {
+         if(selfSend){
+             return 1;
+         }else{
+             return 0;
+         }
+    }
 }

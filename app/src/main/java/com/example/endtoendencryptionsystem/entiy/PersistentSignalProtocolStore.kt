@@ -33,7 +33,7 @@ import java.util.Base64
 @RequiresApi(Build.VERSION_CODES.O)
 class PersistentSignalProtocolStore(
     private val keyRepository: KeyRepository,
-    private val userId: String  
+    private val userId: String
 ) :  SignalProtocolStore,  SenderKeyStore {
       
     private var identityKeyPair: IdentityKeyPair  
@@ -270,12 +270,12 @@ class PersistentSignalProtocolStore(
         record: SenderKeyRecord?
     ) {
         if (senderKeyName == null || record == null) return
-
         runBlocking {
             keyRepository.saveSenderKey(
                 SignalSenderKey(
                     senderKeyName = senderKeyName.serialize(),
                     userId = userId,
+                    groupId = senderKeyName.serialize().split("::")[0],
                     senderKeyRecord = Base64.getEncoder().encodeToString(record.serialize())
                 )
             )
@@ -293,7 +293,6 @@ class PersistentSignalProtocolStore(
             }
         }
     }
-
 
 
 }

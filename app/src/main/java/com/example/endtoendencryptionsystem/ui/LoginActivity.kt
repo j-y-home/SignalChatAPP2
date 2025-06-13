@@ -1,145 +1,149 @@
-//package com.example.endtoendencryptionsystem.ui
-//
-//import android.content.Intent
-//import android.os.Bundle
-//import android.text.Editable
-//import android.text.TextWatcher
-//import android.view.View
-//import com.example.endtoendencryptionsystem.R
-//import com.example.endtoendencryptionsystem.core.BaseActivity
-//import com.example.endtoendencryptionsystem.databinding.ActivityLoginBinding
-//import com.example.endtoendencryptionsystem.utils.ValidateUtil
-//import com.example.endtoendencryptionsystem.widget.LoadingDialog
-//import com.lnsoft.conslutationsystem.core.Config
-//import com.therouter.TheRouter
-//
-///**
-// * 登录
-// *
-// * @author zhou
-// */
-//class LoginActivity : BaseActivity() {
-//    private lateinit var binding: ActivityLoginBinding
-//    var mDialog: LoadingDialog? = null
-//    private var mLoginType = Config.LOGIN_TYPE_PHONE_AND_PASSWORD
-//
-//    override fun onCreate(savedInstanceState: Bundle?) {
-//        super.onCreate(savedInstanceState)
-//        binding = ActivityLoginBinding.inflate(layoutInflater)
-//        setContentView(binding.root)
-//        TheRouter.inject(this)
-//        initView()
-//        initListener()
-//    }
-//
-//    fun initView() {
-//        mDialog = LoadingDialog(this@LoginActivity)
-//    }
-//
-//    fun initListener() {
-//        binding.etPhone.addTextChangedListener(TextChange())
-//        binding.etAccount.addTextChangedListener(TextChange())
-//        binding.etPassword.addTextChangedListener(TextChange())
-//        binding.tvLoginType.setOnClickListener {
-//            // 手机号登录 or 其他账号(微信号/QQ号/邮箱)登录
-//            if (Config.LOGIN_TYPE_PHONE_AND_PASSWORD == mLoginType) {
-//                // 当前登录方式手机号登录
-//                // 切换为其他账号登录
-//                binding.llLoginViaWechatIdEmailQqId.visibility = View.VISIBLE
-//                binding.llLoginViaMobileNumber.visibility = View.GONE
-//                mLoginType = Config.LOGIN_TYPE_OTHER_ACCOUNTS_AND_PASSWORD
-//                binding.etPhone.setText("")
-//                binding.tvTitle.text = getString(R.string.login_via_wechat_id_email_qq_id)
-//                binding.tvLoginType.text = getString(R.string.use_mobile_number_to_login)
-//                binding.btnNext.text = getString(R.string.login)
-//            } else {
-//                // 当前登录方式其他账号登录
-//                // 切换为手机号登录
-//                binding.llLoginViaMobileNumber.visibility = View.VISIBLE
-//                binding.llLoginViaWechatIdEmailQqId.visibility = View.GONE
-//                mLoginType = Config.LOGIN_TYPE_PHONE_AND_PASSWORD
-//                binding.etAccount.setText("")
-//                binding.etPassword.setText("")
-//                binding.tvTitle.text = getString(R.string.login_via_mobile_number)
-//                binding.tvLoginType.text = getString(R.string.use_wechat_id_email_qq_id_to_login)
-//                binding.btnNext.text = getString(R.string.next)
-//            }
-//        }
-//
-//        binding.btnNext.setOnClickListener {
-//            mDialog!!.setMessage(getString(R.string.please_wait))
-//            mDialog!!.setCanceledOnTouchOutside(false)
-//            mDialog!!.show()
-//
-//            val phone = binding.etPhone.text.toString()
-//
-//            // 是否有效手机号
-//            val isValidChinesePhone = ValidateUtil.isValidChinesePhone(phone)
-//            mDialog!!.dismiss()
-//            if (isValidChinesePhone) {
-////                // 有效 TODO
-////                val intent = Intent(
-////                    this@LoginActivity,
-////                    PhoneLoginFinalActivity::class.java
-////                )
-////                intent.putExtra("phone", phone)
-////                startActivity(intent)
-//                startActivity(Intent(this@LoginActivity,MainActivity::class.java))
-//            } else {
-//                // 无效
-//                showAlertDialog(
-//                    this@LoginActivity, "手机号码错误",
-//                    "你输入的是一个无效的手机号码",
-//                    "确定", true
-//                )
-//            }
-//        }
-//    }
-//
-//
-//
-//    fun back(view: View?) {
-//        finish()
-//    }
-//
-//    internal inner class TextChange : TextWatcher {
-//        override fun beforeTextChanged(charSequence: CharSequence, i: Int, i1: Int, i2: Int) {
-//        }
-//
-//        override fun onTextChanged(charSequence: CharSequence, i: Int, i1: Int, i2: Int) {
-//            if (Config.LOGIN_TYPE_PHONE_AND_PASSWORD == mLoginType) {
-//                // 手机号登录
-//                val phoneEtHasText = binding.etPhone.text.length > 0
-//                if (phoneEtHasText) {
-//                    // "下一步"按钮可用
-//                    binding.btnNext.setBackgroundResource(R.drawable.btn_login_next_enable)
-//                    binding.btnNext.setTextColor(getColor(R.color.register_btn_text_enable))
-//                    binding.btnNext.isEnabled = true
-//                } else {
-//                    // "下一步"按钮不可用
-//                    binding.btnNext.setBackgroundResource(R.drawable.btn_login_next_disable)
-//                    binding.btnNext.setTextColor(getColor(R.color.register_btn_text_disable))
-//                    binding.btnNext.isEnabled = false
-//                }
-//            } else {
-//                // 其他账号登录
-//                val accountEtHasText = binding.etAccount.text.length > 0
-//                val passwordEtHasText = binding.etPassword.text.length > 0
-//                if (accountEtHasText && passwordEtHasText) {
-//                    // "登录"按钮可用
-//                    binding.btnNext.setBackgroundResource(R.drawable.btn_login_next_enable)
-//                    binding.btnNext.setTextColor(getColor(R.color.register_btn_text_enable))
-//                    binding.btnNext.isEnabled = true
-//                } else {
-//                    // "登录"按钮不可用
-//                    binding.btnNext.setBackgroundResource(R.drawable.btn_login_next_disable)
-//                    binding.btnNext.setTextColor(getColor(R.color.register_btn_text_disable))
-//                    binding.btnNext.isEnabled = false
-//                }
-//            }
-//        }
-//
-//        override fun afterTextChanged(editable: Editable) {
-//        }
-//    }
-//}
+package com.example.endtoendencryptionsystem.ui
+
+import android.annotation.SuppressLint
+import android.content.Context
+import android.content.Intent
+import android.os.Bundle
+import android.os.IBinder
+import android.os.Parcelable
+import android.text.TextUtils
+import android.util.Log
+import android.view.MotionEvent
+import android.view.View
+import android.view.inputmethod.InputMethodManager
+import android.widget.EditText
+import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
+import autodispose2.androidx.lifecycle.AndroidLifecycleScopeProvider
+import autodispose2.androidx.lifecycle.autoDispose
+import autodispose2.autoDispose
+import com.drake.statusbar.immersive
+import com.example.endtoendencryptionsystem.databinding.ActivityLoginNamePwdBinding
+import com.example.endtoendencryptionsystem.entiy.vo.LoginVO
+import com.example.endtoendencryptionsystem.utils.json
+import com.example.endtoendencryptionsystem.utils.toJSONString
+import com.example.endtoendencryptionsystem.viewmodel.SessionViewModel
+import com.jakewharton.rxbinding4.view.clicks
+import com.tencent.mmkv.MMKV
+import com.wumingtech.at.handler.handleGlobalError
+import com.wumingtech.at.viewmodel.factory.SessionViewModelFactory
+import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
+import io.reactivex.rxjava3.core.BackpressureStrategy
+import io.reactivex.rxjava3.functions.Predicate
+import io.reactivex.rxjava3.schedulers.Schedulers
+import java.util.concurrent.TimeUnit
+
+
+class LoginActivity : AppCompatActivity() {
+
+    private lateinit var binding: ActivityLoginNamePwdBinding
+    private val mContext: Context = this@LoginActivity
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        binding = ActivityLoginNamePwdBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+        immersive()
+        val viewModel: SessionViewModel by lazy { SessionViewModelFactory(application).create(SessionViewModel::class.java) }
+        binding.btnNext.clicks().toFlowable(BackpressureStrategy.ERROR)
+            .throttleFirst(1, TimeUnit.SECONDS)
+            .filter { validator() }
+            .subscribeOn(AndroidSchedulers.mainThread())
+            .observeOn(Schedulers.io())
+            .flatMap {
+                return@flatMap viewModel.createSession(
+                    binding.etUsername.text.toString().trim(),
+                    binding.etPwd.text.toString().trim()
+                )
+            }
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .compose(handleGlobalError(mContext))
+            .autoDispose(AndroidLifecycleScopeProvider.from(this))
+            .subscribe( {
+                Log.e("xxxx","登录成功："+json.toJSONString(it))
+                val loginInfo : LoginVO =  it
+                MMKV.defaultMMKV().encode("loginInfo",it)
+                MMKV.defaultMMKV().encode("accessToken", loginInfo.accessToken)
+                MMKV.defaultMMKV().encode("userId", loginInfo.userId.toInt())
+                MMKV.defaultMMKV().encode("userName", binding.etUsername.text.toString().trim())
+                startActivity(Intent(this@LoginActivity, MainActivity::class.java))
+                finish()
+            },{
+                binding.btnNext.text = "登录"
+                Log.e("xxxx","登录失败："+it.message)
+                Toast.makeText(mContext, "登录失败："+it.message, Toast.LENGTH_SHORT).show()
+            })
+    }
+
+    /**
+     * 验证用户名、密码是否为空
+     */
+    private fun validator(): Boolean {
+        Log.e("xxx","----------验证")
+        return when {
+            TextUtils.isEmpty(binding.etUsername.text.toString()) -> {
+                binding.etUsername.error = "用户名不能为空"
+                false
+            }
+
+            TextUtils.isEmpty(binding.etPwd.text.toString()) -> {
+                binding.etPwd.error = "密码不能为空"
+                false
+            }
+
+            else -> {
+                binding.btnNext.text = "登录中..."
+                true
+            }
+        }
+    }
+
+    /**
+     * 重写dispatchTouchEvent
+     */
+    override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
+        if (ev.action == MotionEvent.ACTION_DOWN) {
+            val v = currentFocus
+            if (isShouldHideKeyboard(v, ev)) {
+                hideKeyboard(v!!.windowToken)
+            }
+        }
+        return super.dispatchTouchEvent(ev)
+    }
+
+    /**
+     * 根据EditText所在坐标和用户点击的坐标相对比，来判断是否隐藏键盘，因为当用户点击EditText时则不能隐藏
+     *
+     * @param v
+     * @param event
+     * @return false
+     */
+    private fun isShouldHideKeyboard(v: View?, event: MotionEvent): Boolean {
+        if (v != null && v is EditText) {
+            val l = intArrayOf(0, 0)
+            v.getLocationInWindow(l)
+            val left = l[0]
+            val top = l[1]
+            val bottom = top + v.height
+            val right = left + v.width
+            return !(event.x > left && event.x < right && event.y > top && event.y < bottom)
+        }
+        // 如果焦点不是EditText则忽略，这个发生在视图刚绘制完，第一个焦点不在EditText上，和用户用轨迹球选择其他的焦点
+        return false
+    }
+
+    /**
+     * 获取InputMethodManager，隐藏软键盘
+     * @param token
+     */
+    @SuppressLint("WrongConstant")
+    private fun hideKeyboard(token: IBinder?) {
+        if (token != null) {
+            val im = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+            im.hideSoftInputFromWindow(token, InputMethodManager.HIDE_NOT_ALWAYS)
+        }
+    }
+}
+
+

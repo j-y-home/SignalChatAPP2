@@ -91,4 +91,6 @@
     <color name="common_divider">#dfdfdd</color>
     <color name="black">#000000</color>
     <color name="white">#ffffff</color>
+
+    <color name="color_red_at">#e43d33</color>
 </resources>

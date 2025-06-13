@@ -3,6 +3,7 @@ package com.example.endtoendencryptionsystem.entiy.database
 import android.os.Parcelable
 import androidx.room.ColumnInfo
 import androidx.room.Entity
+import androidx.room.Ignore
 import androidx.room.PrimaryKey
 import com.fasterxml.jackson.annotation.JsonFormat
 import kotlinx.parcelize.Parcelize
@@ -20,7 +21,11 @@ class User(
      */
     @PrimaryKey
     var id:Long,
-
+    /**
+     * 用户名
+     */
+    @ColumnInfo(name = "user_name")
+    var userName: String?,
 
     /**
      * 用户昵称
@@ -84,6 +89,9 @@ class User(
      * 预密钥
      */
     @ColumnInfo(name="pre_key_bundle_maker")
-    var preKeyBundleMaker: String?
+    var preKeyBundleMaker: String?,
+
+    @Ignore
+    var isFriend: Boolean
 
 ) : Parcelable
