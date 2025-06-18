@@ -3,21 +3,21 @@ package com.example.endtoendencryptionsystem.viewmodel
 import android.app.Application
 import android.util.Log
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import autodispose2.autoDispose
+import com.example.endtoendencryptionsystem.entiy.database.ChatConversation
 import com.example.endtoendencryptionsystem.entiy.vo.LoginVO
+import com.example.endtoendencryptionsystem.repository.ChatMsgRepository
 import com.example.endtoendencryptionsystem.repository.SessionRepository
 import com.example.endtoendencryptionsystem.utils.SignalKeyManager
-import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
+import com.fasterxml.jackson.annotation.JsonTypeInfo.Id
 
 import io.reactivex.rxjava3.core.Flowable
-import io.reactivex.rxjava3.schedulers.Schedulers
 import kotlinx.coroutines.launch
 
 class SessionViewModel(app: Application): AutoDisposeViewModel(app) {
 
     private val sessionRepository: SessionRepository = SessionRepository()
+    private val chatMsgRepository: ChatMsgRepository = ChatMsgRepository(app)
     var refreshResult = MutableLiveData<LoginVO>()
 
     fun createSession(username:String,password:String): Flowable<LoginVO>{
@@ -37,20 +37,13 @@ class SessionViewModel(app: Application): AutoDisposeViewModel(app) {
      * 该方法之后要加载（刷新）自己、好友列表、群等信息（参考uniapp）
      * 先做自己信息的获取，其他的待 TODO
      */
-    fun refreshToken(refreshToken: String){
+    fun refreshToken(refreshToken: String):Flowable<LoginVO>{
         Log.e("xxxx","refreshToken")
-        sessionRepository.refreshToken(refreshToken)
-            .doOnNext {
+       return sessionRepository.refreshToken(refreshToken)
+    }
 
-            }
-
-
-            .subscribeOn(Schedulers.io())
-            .observeOn(AndroidSchedulers.mainThread())
-            .autoDispose(this)
-            .subscribe({
-                refreshResult.postValue(it)
-            }, {})
+    fun getConversation():Flowable<List<ChatConversation>>{
+        return chatMsgRepository.getAllConversations()
     }
 
     fun getMyInfo(){

@@ -20,18 +20,5 @@ open class SessionRepository() {
 
     fun getMyInfo(): Flowable<UserVO> {
         return ApiFactory.API.api.getMyInfo()
-        return if (app.isOnline()) {
-            ApiFactory.API.api.getTasks()
-                .flatMap {
-                    db.runInTransaction(Callable {
-                        val deleteTaskList = metadataDao.getNotTSTask()
-                        metadataDao.deleteAllTask(deleteTaskList)
-                        metadataDao.insertTask(it)
-                        metadataDao.getToDoGroupTask()
-                    })
-                }
-        } else {
-            metadataDao.getToDoGroupTask()
-        }
     }
 }

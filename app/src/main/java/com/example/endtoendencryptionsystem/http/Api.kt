@@ -174,6 +174,9 @@ interface Api {
     @DELETE(value = "message/group/recall")
     fun recallGroupMsg(@Query(value = "id") id: Long): Flowable<GroupMessageVO>
 
+    @GET(value = "/user/terminal/online")
+    fun fetchOlineStatus(@Query(value = "userIds") userIds: String):Flowable<String>
+
 
 
 
