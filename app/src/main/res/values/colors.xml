@@ -78,6 +78,11 @@
     <color name="divider_green">#2FAF7A</color>
 
     <color name="common_hint_grey">#A5A5A5</color>
+    <color name="common_hint_grey2">#EDEDED</color>
+    <color name="common_hint_grey3">#C0C0C0</color>
+
+
+
     <!--    朋友圈相关-->
     <color name="transparent">#00000000</color>
     <color name="default_clickable_color">#cccccc</color>

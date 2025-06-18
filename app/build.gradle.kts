@@ -100,7 +100,6 @@ dependencies {
     implementation(libs.rxbinding.material)
     implementation(libs.status.bar)
     implementation(libs.x.popup)
-    implementation(files("libs\\classes-dex2jar.jar"))
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.test.ext.junit)
 //    androidTestImplementation(libs.espresso.core)
@@ -144,7 +143,9 @@ dependencies {
     implementation(libs.room.ktx)
     implementation(libs.room.runtime)
     ksp(libs.room.compiler)
-    
+    implementation(libs.room.rxjava3)
+
+    implementation(libs.rxkotlin)
 
     implementation(libs.jackson.core)
     implementation(libs.jackson.databind)

@@ -18,7 +18,8 @@ import com.example.endtoendencryptionsystem.entiy.database.key.SignalPreKey
 import com.example.endtoendencryptionsystem.entiy.database.key.SignalSenderKey
 import com.example.endtoendencryptionsystem.entiy.database.key.SignalSession
 import com.example.endtoendencryptionsystem.entiy.database.key.SignalSignedPreKey
-
+import io.reactivex.rxjava3.core.Single
+import io.reactivex.rxjava3.schedulers.Schedulers
 
 
 /**
@@ -32,97 +33,97 @@ class KeyRepository(val app: Application) {
 
 
     // Signal Protocol 密钥管理方法
-    fun getIdentityKey(userId: String): SignalIdentityKey? {
+    suspend fun getIdentityKey(userId: String): SignalIdentityKey {
         return signalKeyDao.getIdentityKey(userId)
     }
 
-    fun saveIdentityKey(identityKey: SignalIdentityKey) {
+    suspend fun saveIdentityKey(identityKey: SignalIdentityKey) {
         signalKeyDao.insertIdentityKey(identityKey)
     }
 
-    fun getPreKey(keyId: Int, userId: String): SignalPreKey? {
+    suspend fun getPreKey(keyId: Int, userId: String): SignalPreKey? {
         return signalKeyDao.getPreKey(keyId, userId)
     }
 
-    fun savePreKey(preKey: SignalPreKey) {
+    suspend  fun savePreKey(preKey: SignalPreKey) {
         signalKeyDao.insertPreKey(preKey)
     }
 
-    fun deletePreKey(keyId: Int, userId: String) {
+    suspend fun deletePreKey(keyId: Int, userId: String) {
         signalKeyDao.deletePreKey(keyId, userId)
     }
 
-    fun getSignedPreKey(keyId: Int, userId: String): SignalSignedPreKey? {
+    suspend  fun getSignedPreKey(keyId: Int, userId: String): SignalSignedPreKey? {
         return signalKeyDao.getSignedPreKey(keyId, userId)
     }
 
-    fun saveSignedPreKey(signedPreKey: SignalSignedPreKey) {
+    suspend  fun saveSignedPreKey(signedPreKey: SignalSignedPreKey) {
         signalKeyDao.insertSignedPreKey(signedPreKey)
     }
 
-    fun getSession(sessionKey: String, userId: String): SignalSession? {
+    suspend  fun getSession(sessionKey: String, userId: String): SignalSession? {
         return signalKeyDao.getSession(sessionKey, userId)
     }
 
     //getAllSessions
-    fun getAllSessions(userId: String): List<SignalSession> {
+    suspend fun getAllSessions(userId: String): List<SignalSession> {
         return signalKeyDao.getAllSessions(userId)
     }
 
-    fun saveSession(session: SignalSession) {
+    suspend  fun saveSession(session: SignalSession) {
         signalKeyDao.insertSession(session)
     }
 
-    fun getSenderKey(senderKeyName: String, userId: String): SignalSenderKey? {
+    suspend fun getSenderKey(senderKeyName: String, userId: String): SignalSenderKey? {
         return signalKeyDao.getSenderKey(senderKeyName, userId)
     }
 
-    fun saveSenderKey(senderKey: SignalSenderKey) {
+    suspend  fun saveSenderKey(senderKey: SignalSenderKey) {
         Log.e("xxxx","走这儿？"+ JSON.toJSONString(senderKey))
         signalKeyDao.insertSenderKey(senderKey)
     }
 
-    fun deleteSenderKey(senderKeyName: String){
+    suspend fun deleteSenderKey(senderKeyName: String){
         signalKeyDao.deleteSenderKey(senderKeyName)
     }
 
-    fun deleteSenderKeysByGroupId(groupId:String,userId:String){
+    suspend fun deleteSenderKeysByGroupId(groupId:String,userId:String){
         signalKeyDao.deleteSenderKeysByGroupId(groupId,userId)
     }
 
 
-    fun getFriendPreKeys(friendId: String): List<SignalPreKey> {
+    suspend fun getFriendPreKeys(friendId: String): List<SignalPreKey> {
         return signalKeyDao.getFriendPreKeys(friendId)
     }
 
-    fun getFriendSignedPreKeys(friendId: String): List<SignalSignedPreKey> {
+    suspend  fun getFriendSignedPreKeys(friendId: String): List<SignalSignedPreKey> {
         return signalKeyDao.getFriendSignedPreKeys(friendId)
     }
 
-    fun saveFriendPreKey(preKey: SignalPreKey) {
+    suspend  fun saveFriendPreKey(preKey: SignalPreKey) {
         signalKeyDao.insertPreKey(preKey)
     }
-    fun saveFriendSignedPreKey(signedPreKey: SignalSignedPreKey) {
+    suspend  fun saveFriendSignedPreKey(signedPreKey: SignalSignedPreKey) {
         signalKeyDao.insertSignedPreKey(signedPreKey)
     }
 
     //getAllSignedPreKeys
-    fun getAllSignedPreKeys(userId: String): List<SignalSignedPreKey> {
+    suspend  fun getAllSignedPreKeys(userId: String): List<SignalSignedPreKey> {
         return signalKeyDao.getAllSignedPreKeys(userId)
     }
 
     //deleteSignedPreKey
-    fun deleteSignedPreKey(keyId: Int, userId: String) {
+    suspend fun deleteSignedPreKey(keyId: Int, userId: String) {
         signalKeyDao.deleteSignedPreKey(keyId, userId)
     }
 
     //deleteSession(sessionKey, userId)
-    fun deleteSession(sessionKey: String, userId: String) {
+    suspend fun deleteSession(sessionKey: String, userId: String) {
         signalKeyDao.deleteSession(sessionKey, userId)
     }
 
     //deleteAllSessionsForName
-    fun deleteAllSessionsForName(sessionKey: String, userId: String) {
+    suspend  fun deleteAllSessionsForName(sessionKey: String, userId: String) {
         signalKeyDao.deleteAllSessionsForName(sessionKey, userId)
     }
 }

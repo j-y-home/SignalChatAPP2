@@ -9,7 +9,9 @@ import com.example.endtoendencryptionsystem.entiy.database.key.SignalSenderKey
 import com.example.endtoendencryptionsystem.entiy.database.key.SignalSession
 import com.example.endtoendencryptionsystem.entiy.database.key.SignalSignedPreKey
 import com.example.endtoendencryptionsystem.repository.KeyRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import org.whispersystems.libsignal.IdentityKey
 import org.whispersystems.libsignal.IdentityKeyPair
 import org.whispersystems.libsignal.InvalidKeyIdException
@@ -29,6 +31,19 @@ import org.whispersystems.libsignal.util.KeyHelper
 import java.util.Arrays
 import java.util.Base64
 
+/**
+1，在登录后注册密钥。登录 token 失效后，重新登录时是否会生成新的身份密钥？
+结论：不会自动生成新的身份密钥，除非数据库中没有该用户的身份密钥记录。
+
+如果你在重新登录时传入的 userId 与之前相同，并且数据库中存在该用户的 identityKey，则会加载已有密钥。
+只有当数据库中没有该用户的身份信息时，才会生成新的密钥对和 registrationId。
+✅ 建议：
+在退出登录或切换账号时不要清除密钥数据，除非用户明确要求“清除本地密钥”。
+若担心多账号混淆，可以在 userId 中加入更多标识（如 userId_deviceId）。
+
+
+
+ */
 
 @RequiresApi(Build.VERSION_CODES.O)
 class PersistentSignalProtocolStore(
@@ -38,13 +53,15 @@ class PersistentSignalProtocolStore(
       
     private var identityKeyPair: IdentityKeyPair  
     private var registrationId: Int  
-      
+
     init {  
         // 通过 ChatRepository 初始化密钥  
         runBlocking {  
-            val existingKey = keyRepository.getIdentityKey(userId)
+            val existingKey =  withContext(Dispatchers.IO) {
+                keyRepository.getIdentityKey(userId)
+            }
             if (existingKey != null) {  
-                identityKeyPair = IdentityKeyPair(Base64.getDecoder().decode(existingKey.identityKeyPair))  
+                identityKeyPair = IdentityKeyPair(Base64.getDecoder().decode(existingKey.identityKeyPair))
                 registrationId = existingKey.registrationId  
             } else {  
                 identityKeyPair = KeyHelper.generateIdentityKeyPair()  
@@ -71,7 +88,9 @@ class PersistentSignalProtocolStore(
         if (address == null || identityKey == null) return false
 
         return runBlocking {
-            val existing = keyRepository.getIdentityKey("${address.name}:${address.deviceId}")
+            val existing =  withContext(Dispatchers.IO) {
+                keyRepository.getIdentityKey("${address.name}:${address.deviceId}")
+            }
             keyRepository.saveIdentityKey(
                 SignalIdentityKey(
                     userId = "${address.name}:${address.deviceId}",
@@ -91,7 +110,9 @@ class PersistentSignalProtocolStore(
         if (address == null || identityKey == null) return false
 
         return runBlocking {
-            val trusted = keyRepository.getIdentityKey("${address.name}:${address.deviceId}")
+            val trusted = withContext(Dispatchers.IO) {
+                keyRepository.getIdentityKey("${address.name}:${address.deviceId}")
+            }
             trusted == null || Arrays.equals(
                 Base64.getDecoder().decode(trusted.identityKeyPair),
                 identityKey.serialize()
@@ -103,7 +124,9 @@ class PersistentSignalProtocolStore(
         if (address == null) return null
 
         return runBlocking {
-            val identityKey = keyRepository.getIdentityKey("${address.name}:${address.deviceId}")
+            val identityKey = withContext(Dispatchers.IO) {
+                keyRepository.getIdentityKey("${address.name}:${address.deviceId}")
+            }
             if (identityKey != null) {
                 IdentityKey(Base64.getDecoder().decode(identityKey.identityKeyPair), 0)
             } else {

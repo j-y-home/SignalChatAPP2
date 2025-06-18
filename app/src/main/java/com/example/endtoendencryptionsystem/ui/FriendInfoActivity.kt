@@ -21,6 +21,9 @@ import com.drake.statusbar.immersive
 import com.example.endtoendencryptionsystem.databinding.ActivityFriendInfoBinding
 import com.example.endtoendencryptionsystem.databinding.ActivityMainBinding
 import com.example.endtoendencryptionsystem.entiy.database.Friend
+import com.example.endtoendencryptionsystem.enums.ConversationType
+import com.example.endtoendencryptionsystem.enums.MessageType
+import com.example.endtoendencryptionsystem.viewmodel.ChatViewModel
 import com.example.endtoendencryptionsystem.viewmodel.FriendViewModel
 
 
@@ -33,6 +36,7 @@ import kotlin.getValue
 class FriendInfoActivity : AppCompatActivity(){
     private lateinit var binding: ActivityFriendInfoBinding
     private val viewModel by viewModels<FriendViewModel>()
+    private val vmChat by viewModels<ChatViewModel>()
 
     lateinit var friendInfo: Friend
 
@@ -59,9 +63,7 @@ class FriendInfoActivity : AppCompatActivity(){
 
         //发送消息
         binding.tvSendMsg.setOnClickListener {
-            val intent = Intent(this, PrivateChatMsgActivity::class.java)
-            intent.putExtra("friendInfo", friendInfo)
-            startActivity(intent)
+            vmChat.getConversationByUserIdAndTargetIdAndType(friendInfo.friendId, ConversationType.PRIVATE.type)
         }
 
         //删除好友
@@ -91,6 +93,13 @@ class FriendInfoActivity : AppCompatActivity(){
                     }
                     .show()
             }
+        }
+
+        vmChat.getConversation.observe(this) {
+            val intent = Intent(this, PrivateChatMsgActivity::class.java)
+            intent.putExtra("friendInfo", friendInfo)
+            intent.putExtra("conversationId",it.id)
+            startActivity(intent)
         }
 
 

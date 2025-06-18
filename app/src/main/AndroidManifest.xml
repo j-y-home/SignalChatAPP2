@@ -111,6 +111,7 @@
             </intent-filter>
         </receiver>
 
+        <service android:name=".service.WebSocketService"/>
     </application>
 
 </manifest>

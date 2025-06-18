@@ -45,6 +45,7 @@ import com.example.endtoendencryptionsystem.entiy.database.PrivateMessage
 import com.example.endtoendencryptionsystem.entiy.dto.PrivateMessageDTO
 import com.example.endtoendencryptionsystem.enums.MessageType
 import com.example.endtoendencryptionsystem.viewmodel.ChatViewModel
+import com.example.endtoendencryptionsystem.viewmodel.FriendViewModel
 import com.example.endtoendencryptionsystem.widget.ConfirmDialog
 import com.example.endtoendencryptionsystem.widget.ConfirmDialog.OnDialogClickListener
 import com.example.endtoendencryptionsystem.widget.ExpandGridView
@@ -55,6 +56,8 @@ import java.util.UUID
 
 /**
  * 私聊页面
+ * 主要逻辑点：
+ * 1，在发送第一条消息时，获取下好友密钥（以防密钥更新）
  */
 class PrivateChatMsgActivity : AppCompatActivity(){
     val REQUEST_CODE_VOICE: Int = 5
@@ -63,7 +66,9 @@ class PrivateChatMsgActivity : AppCompatActivity(){
     val REQUEST_CODE_LOCATION: Int = 8
     private lateinit var binding: ActivityChatBinding
     private val viewModel by viewModels<ChatViewModel>()
+    private val vmFriend by viewModels<FriendViewModel>()
     private lateinit var friendInfo: Friend
+    private  var conversationId:Long = 0
     private lateinit var adapter: PrivateMsgAdapter
     private var data = ArrayList<PrivateChatMessage>()
     private lateinit var mManager: InputMethodManager
@@ -78,7 +83,45 @@ class PrivateChatMsgActivity : AppCompatActivity(){
         setContentView(binding.root)
         immersive()
         initView()
+        getData()
         obsever()
+
+    }
+
+    //获取本地数据库消息
+    fun getData(){
+        conversationId  = intent.getLongExtra("conversationId", 0)
+        viewModel.getPrivateMsgByConversationId(conversationId)
+    }
+
+    @SuppressLint("NotifyDataSetChanged")
+    fun obsever(){
+        //发送消息后更新UI
+        viewModel.sendPrivateMsgResult.observe(this){
+            Log.e("发送消息后更新UI","--")
+            binding.etTextMsg.text.clear()
+        }
+
+        //获取私聊消息后更新UI
+        viewModel.getPrivateMsgByConversationId.observe(this) {
+            Log.e("获取消息后更新UI","--")
+            data.clear()
+            data.addAll(it)
+            adapter.notifyDataSetChanged()
+        }
+
+        //获取好友信息后再发送消息
+        vmFriend.syncFriendInfo.observe(this) {
+            var content = binding.etTextMsg.text.toString()
+            val privateMessageDTO = PrivateMessageDTO(
+                recvId = friendInfo.friendId.toLong(),
+                messageId = UUID.randomUUID().toString(),
+                content = content,
+                type = MessageType.TEXT.code
+            )
+            viewModel.sendPrivateMessage(privateMessageDTO)
+        }
+
 
     }
 
@@ -91,6 +134,8 @@ class PrivateChatMsgActivity : AppCompatActivity(){
         binding.layoutTitle.ivAdd.visibility = View.GONE
         binding.layoutTitle.ivSearch.visibility = View.GONE
         binding.layoutTitle.ivBack.setOnClickListener { finish() }
+
+
 
         mManager = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
         window.setSoftInputMode(
@@ -307,18 +352,7 @@ class PrivateChatMsgActivity : AppCompatActivity(){
 
     }
 
-    @SuppressLint("NotifyDataSetChanged")
-    fun obsever(){
-        //发送消息后更新UI
-        viewModel.sendPrivateMsgResult.observe(this){
-            Log.e("发送消息后更新UI","--")
-            binding.etTextMsg.text.clear()
-            data.add(it)
-            adapter.notifyDataSetChanged()
-        }
 
-
-    }
 
     /**
      * 发送消息
@@ -335,7 +369,12 @@ class PrivateChatMsgActivity : AppCompatActivity(){
             type = MessageType.TEXT.code
         )
         val userId = MMKV.defaultMMKV().decodeInt("userId")
-        viewModel.sendPrivateMessage(privateMessageDTO,userId.toLong(),"PRIVATE",friendInfo.friendId)
+        if(data.isEmpty()){
+            vmFriend.getFriendById(friendInfo.friendId)
+        }else{
+            viewModel.sendPrivateMessage(privateMessageDTO)
+        }
+
     }
 
 

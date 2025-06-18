@@ -9,6 +9,8 @@ import androidx.appcompat.app.AppCompatActivity
 import com.drake.statusbar.immersive
 import com.example.endtoendencryptionsystem.databinding.ActivitySplashBinding
 import com.example.endtoendencryptionsystem.entiy.vo.LoginVO
+import com.example.endtoendencryptionsystem.http.Config
+import com.example.endtoendencryptionsystem.service.WebSocketService
 import com.example.endtoendencryptionsystem.utils.json
 import com.example.endtoendencryptionsystem.utils.toJSONString
 import com.example.endtoendencryptionsystem.viewmodel.SessionViewModel
@@ -43,13 +45,24 @@ class SplashActivity : AppCompatActivity() {
     }
 
     private fun refreshTokenAndGoToMain(refreshToken: String) {
-        // 模拟刷新 Token（可替换为真实网络请求）
         val viewModel: SessionViewModel by lazy { SessionViewModelFactory(application).create(SessionViewModel::class.java) }
         viewModel.refreshToken(refreshToken)
+
         viewModel.refreshResult.observe(this) {
             MMKV.defaultMMKV().encode("loginInfo", it)
             startActivity(Intent(this@SplashActivity,  MainActivity::class.java))
             finish()
+            initWebsocketClient(it.accessToken!!)
         }
+    }
+
+    private fun initWebsocketClient(accessToken:String){
+        val intent = Intent(this, WebSocketService::class.java).apply {
+            putExtra("wsUrl", Config.receiveMessageURL)
+            putExtra("token", accessToken)
+        }
+        Log.d("SplashActivity","启动service")
+        startService(intent)
+
     }
 }

@@ -2,6 +2,8 @@ package com.example.endtoendencryptionsystem.entiy.dao
 
 import androidx.room.*
 import com.example.endtoendencryptionsystem.entiy.database.Friend
+import io.reactivex.rxjava3.core.Flowable
+import kotlinx.coroutines.flow.Flow
 
 
 @Dao
@@ -33,6 +35,9 @@ interface FriendsDao {
      */
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun addFriend(friend: Friend)
+
+    @Update(onConflict = OnConflictStrategy.REPLACE)
+    fun updateFriend(friend: Friend)
 
     @Query("select * from im_friend")
     fun selectAllData():List<Friend>

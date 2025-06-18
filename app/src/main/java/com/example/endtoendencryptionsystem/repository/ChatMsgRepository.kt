@@ -1,7 +1,9 @@
 package com.example.endtoendencryptionsystem.repository
 
 import android.app.Application
+import android.os.Build
 import android.util.Log
+import androidx.annotation.RequiresApi
 import com.alibaba.fastjson.JSON
 import com.alibaba.fastjson.JSONArray
 import com.alibaba.fastjson.JSONObject
@@ -13,7 +15,9 @@ import com.example.endtoendencryptionsystem.entiy.database.GroupChatMessage
 import com.example.endtoendencryptionsystem.entiy.database.PrivateChatMessage
 import com.example.endtoendencryptionsystem.entiy.dto.PrivateMessageDTO
 import com.example.endtoendencryptionsystem.entiy.vo.PrivateMessageVO
+import com.example.endtoendencryptionsystem.enums.ConversationType
 import com.example.endtoendencryptionsystem.enums.MessageStatus
+import com.example.endtoendencryptionsystem.utils.EncryptionUtil
 import com.example.endtoendencryptionsystem.utils.isOnline
 
 import com.example.endtoendencryptionsystem.utils.json
@@ -24,6 +28,9 @@ import com.tencent.mmkv.MMKV
 import com.wumingtech.at.http.ApiFactory
 import io.reactivex.rxjava3.core.BackpressureStrategy
 import io.reactivex.rxjava3.core.Flowable
+import okhttp3.internal.userAgent
+import kotlin.text.toLong
+import kotlin.toString
 
 
 /**
@@ -41,6 +48,29 @@ class ChatMsgRepository(val app: Application) {
     private val groupDao = db.groupDao()
     private val TAG: String = "ChatRepository"
 
+    /**
+     * 获取对话
+     */
+    fun getAllConversations(): Flowable<List<ChatConversation>>{
+        val userId = MMKV.defaultMMKV().decodeInt("userId").toLong()
+        return chatConversationDao.getAllConversations(userId)
+    }
+    /**
+     * 获取对话
+     */
+    fun getConversationByUserIdAndTargetIdAndType(targetId:Long,type:String): Flowable<ChatConversation>{
+        val userId = MMKV.defaultMMKV().decodeInt("userId").toLong()
+        return Flowable.create({
+            it.onNext(chatConversationDao.getConversation(userId,targetId,type))
+            it.onComplete()
+        }, BackpressureStrategy.ERROR)
+    }
+    /**
+     * 获取某个对话的私聊的消息
+     */
+    fun getPrivateMsgByConversationId(conversationId:Long): Flowable<List<PrivateChatMessage>>{
+        return privateChatMessageDao.getMessagesByConversation(conversationId)
+    }
 
     /**
      * 发送私聊消息：
@@ -51,14 +81,22 @@ class ChatMsgRepository(val app: Application) {
      * 2，请求接口发送
      * 3，保存原始消息到本地数据库
      */
-    fun sendPrivateMessage(body: PrivateMessageDTO, userId:  Long,type:String,targetId: Long): Flowable<PrivateChatMessage>{
+    @RequiresApi(Build.VERSION_CODES.O)
+    fun sendPrivateMessage(body: PrivateMessageDTO): Flowable<Boolean>{
         return if (app.isOnline()) {
-            //TODO 加密消息
-            ApiFactory.API.api.sendPrivateMsg(body)
-                .flatMap{
-                    saveChatConversation(userId,targetId,type,)
-                    return@flatMap Flowable.just(it.toPrivateChatMessage(true, conversationId))
-                }
+            //先加密，再发送
+            val enMsg = EncryptionUtil.encryptPrivateMessage(body.recvId.toString(), body.content.toString())
+            if(enMsg!=null){
+                ApiFactory.API.api.sendPrivateMsg(body)
+                    .flatMap{
+                        saveChatConversation(it, ConversationType.PRIVATE.type)
+                        return@flatMap Flowable.just(true)
+                    }
+            }else{
+                Flowable.create({
+                    it.onError(Throwable("加密消息失败：会话不存在"))
+                }, BackpressureStrategy.ERROR)
+            }
         } else {
             Flowable.create({
                 it.onError(Throwable("请在网络良好的条件下发送消息"))
@@ -68,25 +106,39 @@ class ChatMsgRepository(val app: Application) {
 
     /**
      * 保存会话
+     * @param it 消息体
+     * @param type 会话类型 ("PRIVATE" 或 "GROUP")
+     * userId:我的id
+     * targetId:对方id
+     * content：最新的消息内容
+     * type:会话类型 ("PRIVATE" 或 "GROUP")
+     * sendNickName：对方昵称
+     * lastSendTime：最新消息发送时间
      */
-    private fun saveChatConversation(content:String,userId:  Long,type:String,targetId: Long){
+    fun saveChatConversation(it:PrivateMessageVO,type:String){
         //1，判断会话是否存在
         var conversationId: Long = 0
-        val existingConversation: ChatConversation? = chatConversationDao.getConversation(
-            userId, targetId, type)
+        val userId:Long = MMKV.defaultMMKV().decodeInt("userId").toLong()
+        var targetId = if(it.sendId == userId){it.recvId} else{it.sendId}
+        var sendNickName = if(it.sendId == userId){//TODO
+           MMKV.defaultMMKV().decodeString("userName").toString()
+        }else{
+            "对方"
+        }
+        val existingConversation: ChatConversation? = chatConversationDao.getConversation(userId, targetId, type.toString())
         if (existingConversation != null) {//更新会话
             //更新最新一条消息
-            existingConversation.lastContent = content
+            existingConversation.lastContent = it.content.toString()
             existingConversation.lastSendTime = it.sendTime.time
             chatConversationDao.updateConversation(existingConversation)
             conversationId = existingConversation.id
         } else {//创建会话
             val conversation = ChatConversation()
             conversation.userId = userId
-            conversation.sendNickName = MMKV.defaultMMKV().decodeString("userName").toString()
+            conversation.sendNickName = sendNickName
             conversation.targetId = targetId
             conversation.type = type
-            conversation.lastContent = content
+            conversation.lastContent = it.content.toString()
             conversation.lastSendTime = it.sendTime.time
             try{
                 Log.e("xxx","新增会话："+json.toJSONString(conversation))
@@ -97,7 +149,6 @@ class ChatMsgRepository(val app: Application) {
 
         }
         //2，保存消息到数据库
-        it.content = content//未加密的消息
         saveOneMessage(json.toJSONString(it), conversationId, type)
     }
 
@@ -111,7 +162,7 @@ class ChatMsgRepository(val app: Application) {
     private fun saveOneMessage(messageJson: String, conversationId: Long, type: String?) {
         try {
             // 根据会话类型选择不同的DAO
-            if ("PRIVATE" == type) {
+            if (ConversationType.PRIVATE.type == type) {
                 var message = json.toObject<PrivateChatMessage>(messageJson)
                 // 跳过时间提示消息等特殊消息
                 if(message.type == 20){
@@ -123,13 +174,14 @@ class ChatMsgRepository(val app: Application) {
                 if(message.messageId.isNullOrEmpty()){
                     message.messageId = msgJson.getString("id")?:""
                 }
+                message.isSelfSend = message.sendId == MMKV.defaultMMKV().decodeInt("userId").toLong()
                 var existingMessage = privateChatMessageDao.getMessagesById(message.messageId)
                 if (existingMessage != null) {
                     privateChatMessageDao.updateMessage(message)
                 } else {
                     val insertedId: Long = privateChatMessageDao.insertMessage(message)
                 }
-            } else if ("GROUP" == type) {
+            } else if (ConversationType.GROUP.type == type) {
                 val msgJson = JSONObject.parseObject(messageJson)
                 // 处理 @用户ID
                 if (msgJson.containsKey("atUserIds")) {

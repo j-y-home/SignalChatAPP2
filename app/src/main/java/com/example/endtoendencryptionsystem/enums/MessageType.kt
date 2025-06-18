@@ -31,6 +31,7 @@ enum class MessageType (val code: Int,val value:String){
     USER_BANNED(50, "用户封禁"),
     GROUP_BANNED(51, "群聊封禁"),
     GROUP_UNBAN(52, "群聊解封"),
+    FRIEND_ADDED_BOTH(79,"双向添加好友"),
     FRIEND_NEW(80, "新增好友"),
     FRIEND_DEL(81, "删除好友"),
     GROUP_NEW(90, "新增群聊"),

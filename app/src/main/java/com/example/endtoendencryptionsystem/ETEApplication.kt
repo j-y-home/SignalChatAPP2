@@ -12,10 +12,7 @@ import android.util.Log
 import com.example.endtoendencryptionsystem.entiy.vo.LoginVO
 import com.example.endtoendencryptionsystem.http.Config
 import com.example.endtoendencryptionsystem.http.Interceptors
-import com.example.endtoendencryptionsystem.service.MyWebSocketClient
-import com.example.endtoendencryptionsystem.service.WebSocketManager
-import com.example.endtoendencryptionsystem.utils.json
-import com.example.endtoendencryptionsystem.utils.toJSONString
+import com.example.endtoendencryptionsystem.service.WebSocketService
 import com.lnsoft.conslutationsystem.core.AppActivityManager
 import com.tencent.mmkv.MMKV
 import decodeParcelableCompat
@@ -66,7 +63,6 @@ class ETEApplication: Application() {
             Interceptors.openLog()
         }
 
-        initWebsocetClient()
         //开启网络请求日志打印
      //   if (BuildConfig.DEBUG) Interceptors.openLog()
 //        SmartRefreshLayout.setDefaultRefreshHeaderCreator { context, _ ->
@@ -131,101 +127,8 @@ class ETEApplication: Application() {
         }
     }
 
-    private fun initWebsocetClient(){
-        val loginInfo: LoginVO? = MMKV.defaultMMKV().decodeParcelableCompat<LoginVO>("loginInfo")
-        var accessToken:String? = ""
-        if(loginInfo!=null){
-            accessToken = loginInfo.accessToken?:""
-        }
-        val client = MyWebSocketClient(URI.create(Config.receiveMessageURL), accessToken.toString()).apply {
-            setConnectCallback {
-                Log.d("WebSocket", "Connected")
-            }
-            setMessageCallback { cmd, data ->
-                Log.d("WebSocket", "Received CMD: $cmd, Data: $data")
-            }
-
-            setCloseCallback { code ->
-                Log.d("WebSocket", "Connection closed with code $code")
-            }
-        }
-        client.connect()
-    }
 
 
 
-    private fun initWebSocket() {
-        val wsUrl = Config.receiveMessageURL
-        val loginInfo: LoginVO? = MMKV.defaultMMKV().decodeParcelableCompat<LoginVO>("loginInfo")
-        var accessToken:String? = ""
-        if(loginInfo!=null){
-            accessToken = loginInfo.accessToken?:""
-        }
-        val manager: WebSocketManager = WebSocketManager.getInstance()
 
-        manager.connect(wsUrl, accessToken)
-
-        manager.setOnMessageCallback({ message ->
-            Log.d("WebSocket", "setOnMessageCallback: ${json.toJSONString(message)}")
-            try {
-                val json: JSONObject = JSONObject(message)
-                val cmd: Int = json.getInt("cmd")
-                val data: Any? = json.get("data")
-                when (cmd) {
-                    2 -> handleForceLogout()
-                    3 -> handlePrivateMessage(data)
-                    4 -> handleGroupMessage(data)
-                    5 -> handleSystemMessage(data)
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        })
-
-        manager.setOnConnectCallback {
-            Log.d("WebSocket", "连接成功")
-        }
-
-        manager.setOnCloseCallback { code, reason ->
-            Log.d("WebSocket", "连接关闭: $reason"+"  开启重连")
-            // 触发重连机制
-            reconnectWebSocket()
-        }
-    }
-
-
-    private fun reconnectWebSocket() {
-        Handler(Looper.getMainLooper()).postDelayed({
-            val wsUrl = Config.receiveMessageURL
-            val loginInfo: LoginVO? = MMKV.defaultMMKV().decodeParcelableCompat<LoginVO>("loginInfo")
-            var accessToken:String? = ""
-            if(loginInfo!=null){
-                accessToken = loginInfo.accessToken?:""
-            }
-            WebSocketManager.getInstance().connect(wsUrl, accessToken)
-        }, 10000) // 10秒后重连
-    }
-
-
-
-    private fun handleForceLogout() {
-        // 发送广播通知所有页面退出到登录页
-        val intent: Intent = Intent("ACTION_FORCE_LOGOUT")
-        sendBroadcast(intent)
-    }
-
-    private fun handlePrivateMessage(data: Any?) {
-        // 处理私聊消息，插入数据库、更新UI等
-        Log.e("xxx","接收到私聊消息："+ json.toJSONString(data!!))
-    }
-
-    private fun handleGroupMessage(data: Any?) {
-        // 处理群聊消息
-        Log.e("xxx","接收到群聊消息："+ json.toJSONString(data!!))
-    }
-
-    private fun handleSystemMessage(data: Any?) {
-        Log.e("xxx","接收到系统消息："+ json.toJSONString(data!!))
-        // 处理系统消息
-    }
 }

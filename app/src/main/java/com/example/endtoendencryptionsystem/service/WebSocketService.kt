@@ -12,18 +12,37 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.util.Log
+import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
+import com.alibaba.fastjson.JSONObject
 //import com.example.endtoendencryptionsystem.MainActivity
 import com.example.endtoendencryptionsystem.R
+import com.example.endtoendencryptionsystem.entiy.database.Friend
+import com.example.endtoendencryptionsystem.entiy.vo.FriendVO
+import com.example.endtoendencryptionsystem.entiy.vo.PrivateMessageVO
+import com.example.endtoendencryptionsystem.entiy.vo.WebsocketMsgVO
+import com.example.endtoendencryptionsystem.enums.ConversationType
+import com.example.endtoendencryptionsystem.enums.MessageType
 import com.example.endtoendencryptionsystem.http.Config
+import com.example.endtoendencryptionsystem.repository.AppDatabase
+import com.example.endtoendencryptionsystem.repository.ChatMsgRepository
+import com.example.endtoendencryptionsystem.repository.FriendRepository
+import com.example.endtoendencryptionsystem.utils.EncryptionUtil
+import com.example.endtoendencryptionsystem.utils.json
+import com.example.endtoendencryptionsystem.utils.toFriend
+import com.example.endtoendencryptionsystem.utils.toJSONString
+import com.example.endtoendencryptionsystem.utils.toObject
 import org.java_websocket.client.WebSocketClient
 import org.java_websocket.handshake.ServerHandshake
 import com.fasterxml.jackson.core.JsonProcessingException
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
+import com.tencent.mmkv.MMKV
 import java.net.URI
 import java.util.Date
+import java.util.Timer
+import java.util.TimerTask
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.ScheduledThreadPoolExecutor
@@ -43,7 +62,11 @@ class WebSocketService : Service() {
     private var webSocketClient: WebSocketClient? = null
     private val handler = Handler(Looper.getMainLooper())
     private val scheduler: ScheduledExecutorService = ScheduledThreadPoolExecutor(1)
-    private var heartBeatTask: ScheduledFuture<*>? = null
+  //  private var heartBeatTask: ScheduledFuture<*>? = null
+    private var heartbeatRunnable: Runnable? = null
+
+
+    private var heartbeatTimer: Timer? = null
     
     // 连接状态
     private var isConnected = false
@@ -67,17 +90,15 @@ class WebSocketService : Service() {
     
     private val binder = WebSocketBinder()
 
+    private val friendRepository = FriendRepository(application)
+
     override fun onCreate() {
         super.onCreate()
         Log.d(TAG, "WebSocket服务已创建")
-        notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        createNotificationChannel()
-        startForeground(NOTIFICATION_ID, createNotification())
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d(TAG, "WebSocket服务已启动")
-        
         intent?.let {
             if (it.hasExtra("wsUrl") && it.hasExtra("token")) {
                 val wsUrl = it.getStringExtra("wsUrl")
@@ -136,8 +157,8 @@ class WebSocketService : Service() {
                     // 发送登录命令
                     sendLoginCommand()
                     
-                    // 启动心跳检测
-                    startHeartbeat()
+//                    // 启动心跳检测 TODO 先注释掉，js没在这儿启动
+//                    startHeartbeat()
                     
                     // 通知UI
                     handler.post {
@@ -146,7 +167,7 @@ class WebSocketService : Service() {
                 }
                 
                 override fun onMessage(message: String?) {
-                    Log.d(TAG, "收到消息: $message")
+                    Log.d(TAG, "onMessage: $message")
                     message?.let {
                         parseMessage(it)
                     }
@@ -252,6 +273,7 @@ class WebSocketService : Service() {
                 put("accessToken", accessToken)
             })
         }
+        Log.d(TAG,"发送的登录命令：${objectMapper.writeValueAsString(loginNode)}")
         sendMessage(objectMapper.writeValueAsString(loginNode))
     }
     
@@ -260,34 +282,85 @@ class WebSocketService : Service() {
      */
     private fun startHeartbeat() {
         stopHeartbeat()
-        
-        heartBeatTask = scheduler.scheduleAtFixedRate({
-            if (isConnected && webSocketClient != null && webSocketClient!!.isOpen) {
-                val heartbeatNode = objectMapper.createObjectNode().apply {
-                    put("cmd", 1)
-                    set<ObjectNode>("data", objectMapper.createObjectNode())
+
+        heartbeatRunnable = object : Runnable {
+            override fun run() {
+                if (isConnected && webSocketClient != null && webSocketClient!!.isOpen) {
+                    sendHeartbeat()
                 }
-                Log.d(TAG, "发送心跳")
-                sendMessage(objectMapper.writeValueAsString(heartbeatNode))
+                handler.postDelayed(this, HEART_BEAT_INTERVAL)
             }
-        }, 0, HEART_BEAT_INTERVAL, TimeUnit.MILLISECONDS)
+        }
+
+        handler.postDelayed(heartbeatRunnable!!, HEART_BEAT_INTERVAL)
     }
+    private fun sendHeartbeat() {
+        val heartbeatNode = objectMapper.createObjectNode().apply {
+            put("cmd", 1)
+            set<ObjectNode>("data", objectMapper.createObjectNode())
+        }
+        try {
+            val message = objectMapper.writeValueAsString(heartbeatNode)
+            Log.d(TAG, "发送心跳包")
+            sendMessage(message)
+        } catch (e: Exception) {
+            Log.e(TAG, "构建心跳包失败", e)
+        }
+    }
+
+
+//    private fun startHeartbeat() {
+//        stopHeartbeat()
+//
+//        heartBeatTask = scheduler.scheduleAtFixedRate({
+//            if (isConnected && webSocketClient != null && webSocketClient!!.isOpen) {
+//                val heartbeatNode = objectMapper.createObjectNode().apply {
+//                    put("cmd", 1)
+//                    set<ObjectNode>("data", objectMapper.createObjectNode())
+//                }
+//                Log.d(TAG, "发送心跳")
+//                sendMessage(objectMapper.writeValueAsString(heartbeatNode))
+//            }
+//        }, 0, HEART_BEAT_INTERVAL, TimeUnit.MILLISECONDS)
+//    }
     
     /**
      * 停止心跳检测
      */
     private fun stopHeartbeat() {
-        heartBeatTask?.let {
-            if (!it.isCancelled) {
-                it.cancel(true)
-            }
-        }
-        heartBeatTask = null
+        heartbeatRunnable?.let { handler.removeCallbacks(it) }
+        heartbeatRunnable = null
     }
+
+//    private fun stopHeartbeat() {
+//        heartBeatTask?.let {
+//            if (!it.isCancelled) {
+//                it.cancel(true)
+//            }
+//        }
+//        heartBeatTask = null
+//    }
+
+//    fun resetHeartbeat() {
+//        stopHeartbeat()
+//        heartbeatTimer = Timer()
+//        heartbeatTimer?.schedule(object : TimerTask() {
+//            override fun run() {
+//                sendHeartbeat()
+//            }
+//        }, 20000)
+//    }
+//
+//    fun stopHeartbeat() {
+//        heartbeatTimer?.cancel()
+//        heartbeatTimer?.purge()
+//        heartbeatTimer = null
+//    }
 
     /**
      * 解析消息
      */
+    @RequiresApi(Build.VERSION_CODES.O)
     private fun parseMessage(message: String) {
         try {
             val rootNode = objectMapper.readTree(message)
@@ -311,6 +384,11 @@ class WebSocketService : Service() {
                     // 发送广播通知所有页面退出到登录页
                     val intent = Intent("ACTION_FORCE_LOGOUT")
                     sendBroadcast(intent)
+                }
+                3 -> {//收到私聊消息
+                    var msg = json.toObject<PrivateMessageVO>(data.toString())
+                    handlePrivateMessage(msg)
+
                 }
                 else -> { // 其他消息
                     if (data != null && !data.isNull) {
@@ -388,6 +466,74 @@ class WebSocketService : Service() {
      */
     fun setCloseCallback(callback: (code: Int) -> Unit) {
         this.closeCallback = callback
+    }
+
+
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    fun handlePrivateMessage(msg: PrivateMessageVO) {
+        // 好友ID：根据发送/接收方确定
+        var isSelfSend = msg.sendId == MMKV.defaultMMKV().decodeInt("userId").toLong()
+        val friendId = if (isSelfSend) msg.recvId else msg.sendId
+        when (msg.type) {
+            MessageType.FRIEND_NEW.code -> {
+                Log.d(TAG,"收到的好友添加信息："+msg.content)
+                val friendVO = json.toObject<FriendVO>(msg.content.toString())
+                //保存好友信息并重置session
+                friendRepository.saveAndUpdateSession(friendVO.toFriend())
+            }
+            MessageType.FRIEND_DEL.code -> {
+                /**
+                 * A删除B，在确定删除时调用接口同时删除数据库中的好友信息。服务器端推送消息
+                 * A会收到：81的消息。
+                 * B会收到：81和21的消息，在B的私聊表中插入一条21的“你们好友关系已解除”的提示消息
+                 * TODO B端收到消息后做什么操作？在他数据库中删除A吗？待定
+                 */
+                Log.d(TAG,"收到好友解除关系的消息")
+            }
+            // 处理其他类型的消息...
+            else -> {
+                insertPrivateMessage(msg)
+            }
+        }
+
+
+
+    }
+
+    /**
+     * 插入私聊消息
+     */
+    @RequiresApi(Build.VERSION_CODES.O)
+    fun insertPrivateMessage(msg: PrivateMessageVO) {
+        // 普通消息、提示消息、动作消息
+        if (isNormalMessageType(msg.type) || isTipMessageType(msg.type) || isActionMessageType(msg.type)) {
+            // 解密消息（如果是文本消息）
+            if (msg.type == MessageType.TEXT.code) {
+                Log.d(TAG,"收到好友发送的私聊消息："+json.toJSONString(msg))
+                //先解密 再保存消息
+                var deMsg = EncryptionUtil.decryptPrivateMessage(msg.sendId.toString(), msg.content.toString())
+                msg.content = deMsg
+                val chatStore = ChatMsgRepository(application)
+                chatStore.saveChatConversation(msg, ConversationType.PRIVATE.type)
+            } else {//直接保存
+                Log.d(TAG,"收到其他类型的私聊消息："+msg.type+"||"+json.toJSONString(msg))
+                val chatStore = ChatMsgRepository(application)
+                chatStore.saveChatConversation(msg, ConversationType.PRIVATE.type)
+            }
+        }
+    }
+
+    fun isNormalMessageType(type: Int): Boolean {
+        return type >= 0 && type < 10
+    }
+
+    fun isTipMessageType(type: Int): Boolean {
+        return type >= 20 && type < 30
+    }
+
+    fun isActionMessageType(type: Int): Boolean {
+        return type >= 40 && type < 50
     }
 
 }

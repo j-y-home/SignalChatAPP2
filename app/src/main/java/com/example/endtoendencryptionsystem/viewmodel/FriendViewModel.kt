@@ -23,6 +23,22 @@ class FriendViewModel(app: Application) : AutoDisposeViewModel(app) {
     var addFriendResult = MutableLiveData<Boolean>()
     var delFriendResult = MutableLiveData<Boolean>()
     var syncFriendResult = MutableLiveData<Boolean>()
+
+    var friendInfo = MutableLiveData<Friend>()
+
+    var syncFriendInfo = MutableLiveData<Boolean>()
+
+
+    fun getFriendById(friendId:Long) {
+        friendRepository.getFriendById(friendId)
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .autoDispose(this)
+            .subscribe({
+                syncFriendInfo.postValue(it)
+            }, {})
+    }
+
     /**
      * 根据用户名或昵称搜索用户
      */
@@ -108,6 +124,19 @@ class FriendViewModel(app: Application) : AutoDisposeViewModel(app) {
             .autoDispose(this)
             .subscribe({
                 userFriendsList.postValue(it)
+            }, {})
+    }
+
+    /**
+     * 根据好友id获取好友信息
+     */
+    fun getFriendByFriendId(friendId: Long) {
+        friendRepository.selectFriendsByFriendId(friendId)
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .autoDispose(this)
+            .subscribe({
+                friendInfo.postValue(it)
             }, {})
     }
 

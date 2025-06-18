@@ -8,17 +8,19 @@
     android:padding="18dp">
 
     <!-- 头像遮罩层 -->
-    <FrameLayout
-        android:id="@+id/mask"
-        android:layout_width="100dp"
-        android:layout_height="100dp"
-        android:layout_marginRight="20dp">
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"
+        >
         <ImageView
             android:id="@+id/avatar"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-           />
-    </FrameLayout>
+            android:src="@drawable/ic_launcher"
+            android:layout_gravity="center"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            />
+    </LinearLayout>
+
 
     <!-- 右侧内容 -->
     <LinearLayout
@@ -42,6 +44,7 @@
                 android:layout_height="wrap_content"
                 android:textSize="16sp"
                 android:maxLines="1"
+                android:text="张"
                 android:ellipsize="end"/>
 
             <TextView
@@ -49,6 +52,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:textSize="12sp"
+                android:text="15:30"
                 android:textColor="#999999"/>
         </LinearLayout>
 
@@ -83,19 +87,10 @@
                 android:layout_weight="1"
                 android:layout_height="wrap_content"
                 android:maxLines="1"
+                android:text="你们已经成为好友了"
                 android:ellipsize="end"
                 android:textColor="#999999"/>
 
-            <!-- 未读数徽章 -->
-            <TextView
-                android:id="@+id/unread_badge"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:gravity="center"
-                android:textSize="10sp"
-                android:textColor="@android:color/white"
-                android:background="@drawable/badge_circle"
-                android:visibility="gone"/>
         </LinearLayout>
     </LinearLayout>
 </LinearLayout>

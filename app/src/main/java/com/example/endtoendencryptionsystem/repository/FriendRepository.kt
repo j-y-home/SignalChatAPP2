@@ -1,7 +1,9 @@
 package com.example.endtoendencryptionsystem.repository
 
 import android.app.Application
+import android.os.Build
 import android.util.Log
+import androidx.annotation.RequiresApi
 import com.alibaba.fastjson.JSON
 import com.alibaba.fastjson.JSONArray
 import com.alibaba.fastjson.JSONObject
@@ -16,6 +18,7 @@ import com.example.endtoendencryptionsystem.entiy.database.PrivateChatMessage
 import com.example.endtoendencryptionsystem.entiy.database.PrivateMessage
 import com.example.endtoendencryptionsystem.entiy.database.User
 import com.example.endtoendencryptionsystem.enums.MessageStatus
+import com.example.endtoendencryptionsystem.utils.EncryptionUtil
 import com.example.endtoendencryptionsystem.utils.PinyinUtils
 import com.example.endtoendencryptionsystem.utils.isOnline
 
@@ -57,8 +60,11 @@ class FriendRepository(val app: Application) {
      * 获取某个好友的详细信息
      * id:好友id
      */
-    fun selectFriendsByFriendId(friendId: Long): Friend {
-        return friendsDao.selectFriendsByFriendId(friendId);
+    fun selectFriendsByFriendId(friendId: Long): Flowable<Friend> {
+        return Flowable.create({ emitter ->
+            emitter.onNext(friendsDao.selectFriendsByFriendId(friendId))
+            emitter.onComplete()
+        }, BackpressureStrategy.ERROR)
     }
 
 
@@ -119,6 +125,42 @@ class FriendRepository(val app: Application) {
         } else {
             Flowable.create({
                 it.onError(Throwable("请在网络良好的条件下同步好友列表"))
+            }, BackpressureStrategy.ERROR)
+        }
+    }
+
+    /**
+     * 保存好友信息，并重置session
+     */
+    @RequiresApi(Build.VERSION_CODES.O)
+    fun saveAndUpdateSession(friend: Friend){
+        db.runInTransaction {
+            friendsDao.updateFriend(friend)
+            EncryptionUtil.initPrivateSession(friend.friendId.toString(),friend.preKeyBundleMaker.toString())
+        }
+    }
+
+
+    /**
+     *
+     */
+    fun getFriendById(friendId:Long): Flowable<Boolean>{
+        return if (app.isOnline()) {
+            ApiFactory.API.api.getNewFriendInfo(friendId)
+                .flatMap{ its->
+                    val friend = Friend(
+                        userId = MMKV.defaultMMKV().decodeInt("userId"),
+                        friendId = its.id,
+                        friendNickName = its.nickName,
+                        friendHeadImage = its.headImage,
+                        preKeyBundleMaker = its.preKeyBundleMaker
+                    )
+                    saveAndUpdateSession(friend)
+                    return@flatMap Flowable.just(true)
+                }
+        } else {
+            Flowable.create({
+                it.onError(Throwable("请在网络良好的条件下更新好友信息"))
             }, BackpressureStrategy.ERROR)
         }
     }

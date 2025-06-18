@@ -11,7 +11,7 @@ fun PrivateMessageVO.toPrivateChatMessage(self: Boolean, conId: Long): PrivateCh
         recvId = this@toPrivateChatMessage.recvId
         content = this@toPrivateChatMessage.content
         type = this@toPrivateChatMessage.type
-        status = this@toPrivateChatMessage.status
+        status = this@toPrivateChatMessage.status!!
         sendTime = this@toPrivateChatMessage.sendTime.time
         isSelfSend = self
         conversationId = conId

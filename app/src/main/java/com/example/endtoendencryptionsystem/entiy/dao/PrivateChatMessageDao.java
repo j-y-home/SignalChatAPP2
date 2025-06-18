@@ -11,13 +11,17 @@ import com.example.endtoendencryptionsystem.entiy.database.PrivateChatMessage;
 
 import java.util.ArrayList;
 import java.util.List;
-  
+
+import io.reactivex.rxjava3.core.Flowable;
+
 @Dao  
-public interface PrivateChatMessageDao {  
+public interface PrivateChatMessageDao {
+
     @Query("SELECT * FROM private_chat_message WHERE conversationId = :conversationId ORDER BY sendTime ASC LIMIT :limit OFFSET :offset")
     List<PrivateChatMessage> getMessagesForConversation(long conversationId, int offset, int limit);
 
-
+    @Query("SELECT * FROM private_chat_message WHERE conversationId = :conversationId ORDER BY sendTime ASC ")
+    Flowable< List<PrivateChatMessage>> getMessagesByConversation(long conversationId);
     @Query("SELECT * FROM private_chat_message WHERE messageId = :id")
     PrivateChatMessage getMessagesById(String id);
 

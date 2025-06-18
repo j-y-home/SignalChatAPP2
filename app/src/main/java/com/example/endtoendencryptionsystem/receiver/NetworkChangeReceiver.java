@@ -7,14 +7,17 @@ import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.util.Log;
 
-import com.example.endtoendencryptionsystem.service.WebSocketManager;
+
+import com.example.endtoendencryptionsystem.service.WebSocketService;
 
 public class NetworkChangeReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {
         if (isNetworkAvailable(context)) {
             Log.e("xxxx","网络连接上了：开启重连ws");
-            WebSocketManager.getInstance().reconnect();
+
+           //TODO 如何重连websocketService，调用重连方法
+          //  WebSocketService.getInstance().reconnect();
         }
     }
 

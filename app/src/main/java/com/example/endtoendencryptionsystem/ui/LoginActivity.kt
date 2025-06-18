@@ -20,6 +20,7 @@ import autodispose2.autoDispose
 import com.drake.statusbar.immersive
 import com.example.endtoendencryptionsystem.databinding.ActivityLoginNamePwdBinding
 import com.example.endtoendencryptionsystem.entiy.vo.LoginVO
+import com.example.endtoendencryptionsystem.utils.SignalKeyManager
 import com.example.endtoendencryptionsystem.utils.json
 import com.example.endtoendencryptionsystem.utils.toJSONString
 import com.example.endtoendencryptionsystem.viewmodel.SessionViewModel
@@ -44,6 +45,9 @@ class LoginActivity : AppCompatActivity() {
         binding = ActivityLoginNamePwdBinding.inflate(layoutInflater)
         setContentView(binding.root)
         immersive()
+        binding.ivBack.setOnClickListener {
+            finish()
+        }
         val viewModel: SessionViewModel by lazy { SessionViewModelFactory(application).create(SessionViewModel::class.java) }
         binding.btnNext.clicks().toFlowable(BackpressureStrategy.ERROR)
             .throttleFirst(1, TimeUnit.SECONDS)
@@ -74,6 +78,10 @@ class LoginActivity : AppCompatActivity() {
                 Log.e("xxxx","登录失败："+it.message)
                 Toast.makeText(mContext, "登录失败："+it.message, Toast.LENGTH_SHORT).show()
             })
+    }
+
+    fun onLoginSuccess(userId: String) {
+
     }
 
     /**
