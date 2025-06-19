@@ -25,7 +25,8 @@ class SessionViewModel(app: Application): AutoDisposeViewModel(app) {
         return sessionRepository.createSession(username, password)
             .doOnNext { loginVO ->
                 viewModelScope.launch {
-                    initOrRegisterSignalKeys(loginVO.userId.toString())
+                    //TODO 登录后的密钥注册逻辑
+                  //  initOrRegisterSignalKeys(loginVO.userId.toString())
                     //TODO 登录成功后做以下操作
 //                    syncFriendList(loginVO.userId.toString())
 //                    syncGroupInfo(loginVO.userId.toString())

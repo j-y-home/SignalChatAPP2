@@ -14,7 +14,7 @@
         >
         <ImageView
             android:id="@+id/avatar"
-            android:src="@drawable/ic_launcher"
+            android:src="@mipmap/default_user_avatar"
             android:layout_gravity="center"
             android:layout_width="30dp"
             android:layout_height="30dp"

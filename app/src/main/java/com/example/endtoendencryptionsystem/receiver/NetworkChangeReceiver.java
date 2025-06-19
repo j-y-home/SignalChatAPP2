@@ -8,7 +8,6 @@ import android.net.NetworkInfo;
 import android.util.Log;
 
 
-import com.example.endtoendencryptionsystem.service.WebSocketService;
 
 public class NetworkChangeReceiver extends BroadcastReceiver {
     @Override

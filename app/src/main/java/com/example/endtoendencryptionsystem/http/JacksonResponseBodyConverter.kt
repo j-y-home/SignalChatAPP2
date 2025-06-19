@@ -28,11 +28,11 @@ internal class JacksonResponseBodyConverter(
                     }
                     return adapter.readValue(resTree["data"])
                 }
-                resTree["code"].asInt() == 20001 -> {
-                    throw AuthException(resTree["message"].asText())
+                resTree["code"].asInt() == 500 -> {
+                    throw BusinessException(resTree["message"].asText())
                 }
                 else -> {
-                    throw BusinessException(resTree["message"].asText(),resTree["code"].asInt())
+                    throw BusinessException(resTree["message"].asText())
                 }
             }
         }

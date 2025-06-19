@@ -15,6 +15,7 @@ import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
 import com.alibaba.fastjson.JSONObject
+import com.example.endtoendencryptionsystem.ETEApplication
 //import com.example.endtoendencryptionsystem.MainActivity
 import com.example.endtoendencryptionsystem.R
 import com.example.endtoendencryptionsystem.entiy.database.Friend
@@ -90,7 +91,7 @@ class WebSocketService : Service() {
     
     private val binder = WebSocketBinder()
 
-    private val friendRepository = FriendRepository(application)
+    private val friendRepository = FriendRepository(ETEApplication.getInstance()!!)
 
     override fun onCreate() {
         super.onCreate()

@@ -19,7 +19,7 @@ object SignalKeyManager {
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
-    suspend fun initOrRegisterSignalKeysIfNecessary(userId: String): JSONObject? {
+    suspend fun initOrRegisterSignalKeysIfNecessary(userId: String):String {
         return withContext(Dispatchers.IO) {
             try {
                 // 1. 检查本地是否存在身份密钥
@@ -27,7 +27,7 @@ object SignalKeyManager {
                 if (existingKey != null) {
                     // 已存在，无需注册
                     Log.d("SignalKeyManager", "已存在身份密钥，跳过注册")
-                    return@withContext null
+                    return@withContext ""
                 }
 
                 // 2. 不存在，注册新密钥
@@ -35,14 +35,14 @@ object SignalKeyManager {
                 val registerResult = EncryptionUtil.registerKey()
 
                 // 3. 可选：将 registerResult 上传到服务器
-                if (registerResult != null) {
-                    uploadKeysToServer(registerResult.toJSONString())
+                if (registerResult.isNotEmpty()) {
+                    uploadKeysToServer(registerResult)
                 }
 
                 registerResult
             } catch (e: Exception) {
                 Log.e("SignalKeyManager", "密钥初始化失败", e)
-                null
+                ""
             }
         }
     }

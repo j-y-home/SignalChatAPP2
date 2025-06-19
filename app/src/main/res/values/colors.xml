@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!--    注册登录页-->
+    <color name="app_main_lg">#3F45D7</color>
+
+
     <color name="app_common_bg">#EDEDED</color>
     <color name="moments_common_bg">#EEEEEE</color>
     <color name="common_divider_view">#EDEDED</color>

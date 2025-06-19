@@ -7,23 +7,6 @@
     android:fitsSystemWindows="true"
     android:orientation="vertical">
 
-    <RelativeLayout
-        android:id="@+id/rl_title"
-        android:layout_width="match_parent"
-        android:layout_height="@dimen/top_bar_height">
-
-        <ImageView
-            android:id="@+id/iv_back"
-            android:layout_width="@dimen/top_back_width"
-            android:layout_height="match_parent"
-            android:layout_alignParentLeft="true"
-            android:layout_centerVertical="true"
-            android:layout_marginLeft="12dp"
-            android:padding="10dp"
-            android:scaleType="centerInside"
-            android:src="@mipmap/icon_close" />
-
-    </RelativeLayout>
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -39,8 +22,8 @@
                 android:id="@+id/tv_title"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_centerInParent="true"
-                android:text="欢迎登录"
+               android:layout_centerInParent="true"
+                android:text="欢迎注册"
                 android:textColor="@color/app_main_lg"
                 android:textStyle="bold"
                 android:textSize="20sp" />
@@ -66,7 +49,7 @@
                     android:textSize="@dimen/common_item_text_size" />
 
                 <EditText
-                    android:id="@+id/et_userphone"
+                    android:id="@+id/et_phone"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_centerVertical="true"
@@ -74,6 +57,56 @@
                     android:hint="请输入手机号"
                     android:background="@null"
                     android:textColorHint="@color/wechat_btn_green"
+                    android:textSize="@dimen/common_item_text_size" />
+            </RelativeLayout>
+
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="48dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_centerVertical="true"
+                    android:layout_marginLeft="10dp"
+                    android:text="用户名"
+                    android:textColor="#353535"
+                    android:textSize="@dimen/common_item_text_size" />
+
+                <EditText
+                    android:id="@+id/et_username"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_centerVertical="true"
+                    android:paddingLeft="100dp"
+                    android:hint="请输入用户名"
+                    android:background="@null"
+                    android:textColorHint="@color/common_hint_grey"
+                    android:textSize="@dimen/common_item_text_size" />
+            </RelativeLayout>
+
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="48dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_centerVertical="true"
+                    android:layout_marginLeft="10dp"
+                    android:text="昵称"
+                    android:textColor="#353535"
+                    android:textSize="@dimen/common_item_text_size" />
+
+                <EditText
+                    android:id="@+id/et_nickname"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_centerVertical="true"
+                    android:paddingLeft="100dp"
+                    android:hint="请输入昵称"
+                    android:background="@null"
+                    android:textColorHint="@color/common_hint_grey"
                     android:textSize="@dimen/common_item_text_size" />
             </RelativeLayout>
 
@@ -198,19 +231,8 @@
             android:background="@drawable/border_btn_add_blue_fill"
             android:paddingTop="7dp"
             android:paddingBottom="7dp"
-            android:text="登     录"
+            android:text="注     册"
             android:textColor="@color/white"
             android:textSize="@dimen/common_item_text_size" />
     </LinearLayout>
-    <TextView
-        android:id="@+id/btn_reg"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:gravity="center"
-        android:layout_gravity="center"
-        android:paddingTop="7dp"
-        android:paddingBottom="7dp"
-        android:text="没有账号，前往注册"
-        android:textColor="@color/app_main_lg"
-        android:textSize="@dimen/common_item_text_size" />
 </LinearLayout>

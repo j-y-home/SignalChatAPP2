@@ -14,6 +14,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.provider.Settings
 import android.text.TextUtils
+import android.util.Log
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
@@ -33,15 +34,17 @@ import com.drake.statusbar.immersive
 
 import com.example.endtoendencryptionsystem.R
 import com.example.endtoendencryptionsystem.adapter.ViewPagerAdapter
-import com.example.endtoendencryptionsystem.core.BaseActivity
 import com.example.endtoendencryptionsystem.databinding.ActivityMainBinding
 import com.example.endtoendencryptionsystem.entiy.database.User
+import com.example.endtoendencryptionsystem.entiy.vo.LoginVO
+import com.example.endtoendencryptionsystem.service.WebSocketService
 import com.example.endtoendencryptionsystem.utils.json
 import com.example.endtoendencryptionsystem.utils.toObject
 import com.example.endtoendencryptionsystem.widget.ConfirmDialog
 import com.lnsoft.conslutationsystem.core.Config
 import com.lnsoft.conslutationsystem.core.SPConfig
 import com.tencent.mmkv.MMKV
+import decodeParcelableCompat
 
 
 /**
@@ -66,11 +69,20 @@ class MainActivity : AppCompatActivity(){
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         immersive()
-        initView()
+        initWebsocketClient()
         initData()
     }
-    fun initView() {
 
+     fun initWebsocketClient() {
+         val loginInfo: LoginVO? = MMKV.defaultMMKV().decodeParcelableCompat<LoginVO>("loginInfo")
+         loginInfo?.accessToken?.let { accessToken ->
+             val intent = Intent(this@MainActivity, WebSocketService::class.java).apply {
+                 putExtra("wsUrl", com.example.endtoendencryptionsystem.http.Config.receiveMessageURL)
+                 putExtra("token", accessToken)
+             }
+             Log.d("MainActivity", "启动service")
+             startService(intent)
+         }
     }
 
     fun initData() {

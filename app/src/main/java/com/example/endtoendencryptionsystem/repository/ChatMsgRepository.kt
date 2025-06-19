@@ -17,6 +17,8 @@ import com.example.endtoendencryptionsystem.entiy.dto.PrivateMessageDTO
 import com.example.endtoendencryptionsystem.entiy.vo.PrivateMessageVO
 import com.example.endtoendencryptionsystem.enums.ConversationType
 import com.example.endtoendencryptionsystem.enums.MessageStatus
+import com.example.endtoendencryptionsystem.http.RxSchedulers
+import com.example.endtoendencryptionsystem.http.response.BusinessException
 import com.example.endtoendencryptionsystem.utils.EncryptionUtil
 import com.example.endtoendencryptionsystem.utils.isOnline
 
@@ -25,6 +27,7 @@ import com.example.endtoendencryptionsystem.utils.toJSONString
 import com.example.endtoendencryptionsystem.utils.toObject
 import com.example.endtoendencryptionsystem.utils.toPrivateChatMessage
 import com.tencent.mmkv.MMKV
+import com.wumingtech.at.handler.handleGlobalError
 import com.wumingtech.at.http.ApiFactory
 import io.reactivex.rxjava3.core.BackpressureStrategy
 import io.reactivex.rxjava3.core.Flowable
@@ -61,7 +64,19 @@ class ChatMsgRepository(val app: Application) {
     fun getConversationByUserIdAndTargetIdAndType(targetId:Long,type:String): Flowable<ChatConversation>{
         val userId = MMKV.defaultMMKV().decodeInt("userId").toLong()
         return Flowable.create({
-            it.onNext(chatConversationDao.getConversation(userId,targetId,type))
+            var chat = chatConversationDao.getConversation(userId,targetId,type)
+            if(chat == null){
+                //创建会话
+                val conversation = ChatConversation()
+                conversation.userId = userId
+                conversation.targetId = targetId
+                conversation.type = type
+                conversation.lastContent = ""
+                val newChatId = chatConversationDao.insertConversation(conversation)
+                conversation.id = newChatId
+                chat = conversation
+            }
+            it.onNext(chat)
             it.onComplete()
         }, BackpressureStrategy.ERROR)
     }
@@ -85,10 +100,17 @@ class ChatMsgRepository(val app: Application) {
     fun sendPrivateMessage(body: PrivateMessageDTO): Flowable<Boolean>{
         return if (app.isOnline()) {
             //先加密，再发送
-            val enMsg = EncryptionUtil.encryptPrivateMessage(body.recvId.toString(), body.content.toString())
+            val origanlMsg = body.content
+            val enMsg = EncryptionUtil.encryptPrivateMessage(body.recvId.toString(), origanlMsg)
             if(enMsg!=null){
+                body.content = enMsg
                 ApiFactory.API.api.sendPrivateMsg(body)
+                    .compose(RxSchedulers.ioToMain())
+                    .compose(handleGlobalError(app))
+                    .compose(RxSchedulers.mainToIo())
                     .flatMap{
+                        //保存原始消息到本地数据库
+                        it.content = origanlMsg
                         saveChatConversation(it, ConversationType.PRIVATE.type)
                         return@flatMap Flowable.just(true)
                     }
@@ -121,7 +143,7 @@ class ChatMsgRepository(val app: Application) {
         val userId:Long = MMKV.defaultMMKV().decodeInt("userId").toLong()
         var targetId = if(it.sendId == userId){it.recvId} else{it.sendId}
         var sendNickName = if(it.sendId == userId){//TODO
-           MMKV.defaultMMKV().decodeString("userName").toString()
+           "我"
         }else{
             "对方"
         }

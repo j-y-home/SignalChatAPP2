@@ -7,14 +7,17 @@ import com.example.endtoendencryptionsystem.entiy.dto.GroupInviteDTO
 import com.example.endtoendencryptionsystem.entiy.dto.GroupMessageDTO
 import com.example.endtoendencryptionsystem.entiy.dto.LoginDTO
 import com.example.endtoendencryptionsystem.entiy.dto.PrivateMessageDTO
+import com.example.endtoendencryptionsystem.entiy.dto.RegisterDTO
 import com.example.endtoendencryptionsystem.entiy.vo.FriendVO
 import com.example.endtoendencryptionsystem.entiy.vo.GroupMemberRemoveVO
 import com.example.endtoendencryptionsystem.entiy.vo.GroupMemberVO
 import com.example.endtoendencryptionsystem.entiy.vo.GroupMessageVO
 import com.example.endtoendencryptionsystem.entiy.vo.GroupVO
 import com.example.endtoendencryptionsystem.entiy.vo.LoginVO
+import com.example.endtoendencryptionsystem.entiy.vo.OnlineTerminalVO
 import com.example.endtoendencryptionsystem.entiy.vo.PrivateMessageVO
 import com.example.endtoendencryptionsystem.entiy.vo.UserVO
+import com.example.endtoendencryptionsystem.model.PreKeyBundleMaker
 
 import io.reactivex.rxjava3.core.Flowable
 import io.reactivex.rxjava3.core.Single
@@ -25,6 +28,14 @@ import java.util.Objects
 interface Api {
 
     /*-----------------------登录相关接口-------------------*/
+
+
+    /**
+     * 注册
+     */
+    @POST(value = "register")
+    fun register(@Body body: RegisterDTO): Flowable<Boolean>
+
     /**
      * 登录
      */
@@ -38,6 +49,8 @@ interface Api {
     fun refreshToken(@Header(value = "refreshToken") refreshToken : String): Flowable<LoginVO>
 
 
+
+
     /*-----------------------用户相关接口-------------------*/
 
     /**
@@ -48,6 +61,17 @@ interface Api {
 
     @PUT(value = "user/update")
     fun updateUserInfo(@Body body: LoginDTO)
+
+    /**
+     * 更新用户公钥信息
+     * TODO 先不考虑设备更换的情况，默认注册后自动登录，后注册并更新密钥。
+     */
+    @PUT(value = "user/updatePublicKeyInfo")
+    fun updatePublicKeyInfo(@Query(value = "preKeyInfo") preKeyInfo: String): Flowable<Boolean>
+
+
+    @GET(value = "/user/terminal/online")
+    fun fetchOlineStatus(@Query(value = "userIds") userIds: String):Flowable<List<OnlineTerminalVO>>
 
     /*-----------------------好友相关接口-------------------*/
 
@@ -73,8 +97,8 @@ interface Api {
     /**
      * 删除好友
      */
-    @DELETE(value = "friend/delete")
-    fun delFriend(@Query(value = "friendId") name: Long): Flowable<Boolean>
+    @DELETE(value = "friend/delete/{friendId}")
+    fun delFriend(@Path("friendId") friendId: Long): Flowable<Boolean>
 
     /**
      * 获取好友信息--主要是密钥信息
@@ -85,8 +109,8 @@ interface Api {
      * 4，收到消息提示“身份已变更”（可能是抛异常）
      * 5，用户主动点击“刷新密钥”按钮
      */
-    @POST(value = "user/find")
-    fun getNewFriendInfo(@Query(value = "id") id: Long): Flowable<User>
+    @GET(value = "user/find/{id}")
+    fun getNewFriendInfo(@Path("id") id: Long): Flowable<User>
 
     /*-----------------------私聊相关接口-------------------*/
 
@@ -174,8 +198,6 @@ interface Api {
     @DELETE(value = "message/group/recall")
     fun recallGroupMsg(@Query(value = "id") id: Long): Flowable<GroupMessageVO>
 
-    @GET(value = "/user/terminal/online")
-    fun fetchOlineStatus(@Query(value = "userIds") userIds: String):Flowable<String>
 
 
 

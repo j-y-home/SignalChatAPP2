@@ -50,10 +50,7 @@ class FriendRepository(val app: Application) {
      * id:当前用户的id
      */
     fun selectAllFriendsByUserId(userId: Int): Flowable<List<Friend>> {
-        return Flowable.create({ emitter ->
-            emitter.onNext(friendsDao.selectAllFriendsByUserId(userId))
-            emitter.onComplete()
-        }, BackpressureStrategy.ERROR)
+        return friendsDao.selectAllFriendsByUserId(userId)
     }
 
     /**
@@ -78,29 +75,25 @@ class FriendRepository(val app: Application) {
      * 获取用户的好友列表：按首字母排序并分组
      */
     fun generateGroupedList():  Flowable<List<FriendItem>> {
-        return Flowable.create({ emitter ->
-            //从数据库获取好友数据
-            val friends = friendsDao.selectAllFriendsByUserId(MMKV.defaultMMKV().decodeInt("userId"))
-            // 先提取每个好友的拼音首字母，并缓存用于排序和分组
-            val friendsWithInitial = friends.map { friend ->
-                val initial = getFirstLetter(friend.friendNickName.toString())
-                Log.e("xxxx","initial:"+initial)
-                Pair(initial, friend)
+        val userId = MMKV.defaultMMKV().decodeInt("userId")
+        return friendsDao.selectAllFriendsByUserId(userId)
+            .map { friends ->
+                // 先提取每个好友的拼音首字母，并缓存用于排序和分组
+                val friendsWithInitial = friends.map { friend ->
+                    val initial = getFirstLetter(friend.friendNickName.toString())
+                    Pair(initial, friend)
+                }
+                // 按拼音首字母排序
+                val sortedList = friendsWithInitial.sortedBy { it.first }.map { it.second }
+                // 按拼音首字母分组
+                val groupedMap = sortedList.groupBy { getFirstLetter(it.friendNickName.toString()) }
+                val result = mutableListOf<FriendItem>()
+                for ((letter, groupFriends) in groupedMap) {
+                    result.add(FriendItem.Header(letter))
+                    result.addAll(groupFriends.map { FriendItem.FriendEntry(it) })
+                }
+                result
             }
-            // 按拼音首字母排序
-            val sortedList = friendsWithInitial.sortedBy { it.first }.map { it.second }
-            // 按拼音首字母分组
-            val groupedMap = sortedList.groupBy { getFirstLetter(it.friendNickName.toString()) }
-            val result = mutableListOf<FriendItem>()
-            for ((letter, groupFriends) in groupedMap) {
-                Log.e("xxxx","letter:"+letter)
-                result.add(FriendItem.Header(letter))
-                result.addAll(groupFriends.map { FriendItem.FriendEntry(it) })
-            }
-
-            emitter.onNext(result)
-            emitter.onComplete()
-        }, BackpressureStrategy.ERROR)
     }
 
     private fun getFirstLetter(name: String): String {
@@ -135,8 +128,9 @@ class FriendRepository(val app: Application) {
     @RequiresApi(Build.VERSION_CODES.O)
     fun saveAndUpdateSession(friend: Friend){
         db.runInTransaction {
+            //1,密钥信息变了，则重置session;2,没有对应的session，则重置session
             friendsDao.updateFriend(friend)
-            EncryptionUtil.initPrivateSession(friend.friendId.toString(),friend.preKeyBundleMaker.toString())
+            EncryptionUtil.initPrivateSession(friend.friendId.toString(), friend.preKeyBundleMaker.toString())
         }
     }
 
@@ -173,7 +167,7 @@ class FriendRepository(val app: Application) {
             Log.e("xxx","这儿1")
             ApiFactory.API.api.getSearchUsersByKey(key)
                 .flatMap{ users->
-                    val localFriends = friendsDao.selectAllFriendsByUserId(MMKV.defaultMMKV().decodeInt("userId"))
+                    val localFriends = friendsDao.selectAllFriendsByUserId2(MMKV.defaultMMKV().decodeInt("userId"))
                     if(localFriends.isNotEmpty()){
                         users.forEach { user ->
                             val friend = localFriends.find { it.friendId == user.id }

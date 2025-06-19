@@ -33,13 +33,13 @@ class ChatRepository(val app: Application) {
     private val TAG: String = "ChatRepository"
 
 
-    /**
-     * 获取当前用户的所有好友
-     * id:当前用户的id
-     */
-    fun selectAllFriendsByUserId(userId: Int): List<Friend> {
-        return friendsDao.selectAllFriendsByUserId(userId);
-    }
+//    /**
+//     * 获取当前用户的所有好友
+//     * id:当前用户的id
+//     */
+//    fun selectAllFriendsByUserId(userId: Int): List<Friend> {
+//        return friendsDao.selectAllFriendsByUserId(userId);
+//    }
 
     /**
      * 获取某个好友的详细信息

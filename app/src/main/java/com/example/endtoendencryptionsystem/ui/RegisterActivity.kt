@@ -3,6 +3,7 @@ package com.example.endtoendencryptionsystem.ui
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
 import android.os.Parcelable
@@ -13,14 +14,19 @@ import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import autodispose2.androidx.lifecycle.AndroidLifecycleScopeProvider
 import autodispose2.androidx.lifecycle.autoDispose
 import autodispose2.autoDispose
 import com.drake.statusbar.immersive
 import com.example.endtoendencryptionsystem.databinding.ActivityLoginNamePwdBinding
+import com.example.endtoendencryptionsystem.databinding.ActivityRegNamePwdBinding
+import com.example.endtoendencryptionsystem.entiy.dto.LoginDTO
+import com.example.endtoendencryptionsystem.entiy.dto.RegisterDTO
 import com.example.endtoendencryptionsystem.entiy.vo.LoginVO
 import com.example.endtoendencryptionsystem.http.RxSchedulers
+import com.example.endtoendencryptionsystem.utils.EncryptionUtil
 import com.example.endtoendencryptionsystem.utils.SignalKeyManager
 import com.example.endtoendencryptionsystem.utils.ValidateUtil
 import com.example.endtoendencryptionsystem.utils.json
@@ -31,70 +37,91 @@ import com.ruins.library.sweet.SweetAlertDialog
 import com.ruins.library.sweet.SweetAlertType
 import com.tencent.mmkv.MMKV
 import com.wumingtech.at.handler.handleGlobalError
+import com.wumingtech.at.http.ApiFactory
 import com.wumingtech.at.viewmodel.factory.SessionViewModelFactory
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.core.BackpressureStrategy
+import io.reactivex.rxjava3.core.Flowable
 import io.reactivex.rxjava3.functions.Predicate
 import io.reactivex.rxjava3.schedulers.Schedulers
 import java.util.concurrent.TimeUnit
 
-/**
- * TODO
- * bug:
- * 登录失败后，无法再次点击登录
- */
 
-class LoginActivity : AppCompatActivity() {
+class RegisterActivity : AppCompatActivity() {
 
-    private lateinit var binding: ActivityLoginNamePwdBinding
-    private val mContext: Context = this@LoginActivity
+    private lateinit var binding: ActivityRegNamePwdBinding
+    private val mContext: Context = this@RegisterActivity
 
+    @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivityLoginNamePwdBinding.inflate(layoutInflater)
+        binding = ActivityRegNamePwdBinding.inflate(layoutInflater)
         setContentView(binding.root)
         immersive()
-        binding.ivBack.setOnClickListener {
-            finish()
-        }
+
         val viewModel: SessionViewModel by lazy { SessionViewModelFactory(application).create(SessionViewModel::class.java) }
-        binding.btnReg.setOnClickListener {
-            startActivity(Intent(this@LoginActivity, RegisterActivity::class.java))
-        }
         binding.btnNext.clicks().toFlowable(BackpressureStrategy.ERROR)
             .throttleFirst(1, TimeUnit.SECONDS)
             .filter { validator() }
             .subscribeOn(AndroidSchedulers.mainThread())
             .observeOn(Schedulers.io())
             .flatMap {
-                return@flatMap viewModel.createSession(
-                    binding.etUserphone.text.toString().trim(),
-                    binding.etPwd.text.toString().trim()
-                )
+                val registerDTO = RegisterDTO(binding.etPhone.text.toString().trim(),
+                    binding.etUsername.text.toString().trim(),
+                    binding.etNickname.text.toString().trim(),
+                    binding.etPwd.text.toString())
+                    ApiFactory.API.api.register(registerDTO)
             }
             .compose(RxSchedulers.ioToMain())
             .retry(Predicate {
-                binding.btnNext.text = "登   录"
+                binding.btnNext.text = "注   册"
                 SweetAlertDialog(mContext, SweetAlertType.ERROR_TYPE)
-                    .setContentText("$it 请联系客服")
+                    .setContentText("注册失败：$it 请联系客服")
                     .setConfirmText("确认")
                     .show()
                 return@Predicate true
             })
+            .flatMap {
+                ApiFactory.API.api.login(LoginDTO(binding.etPhone.text.toString().trim(),
+                    binding.etPwd.text.toString(), 1))
+            }.retry(Predicate {
+                SweetAlertDialog(mContext, SweetAlertType.ERROR_TYPE)
+                    .setContentText("自动登录失败，请重新登录")
+                    .setConfirmText("确认")
+                    .setConfirmClickListener {
+                        it.dismissWithAnimation()
+                        startActivity(Intent(mContext, LoginActivity::class.java))
+                        finish()
+                    }
+                    .show()
+                return@Predicate true
+            })
+            .flatMap { loginVO ->
+                // 登录成功后获取个人信息
+                MMKV.defaultMMKV().encode("loginInfo", loginVO)
+                MMKV.defaultMMKV().encode("accessToken", loginVO.accessToken)
+                ApiFactory.API.api.getMyInfo()
+            }.flatMap { userVO ->
+                //保存个人信息
+                MMKV.defaultMMKV().encode("selfInfo", userVO)
+                MMKV.defaultMMKV().encode("userId",userVO.id)
+                // 生成密钥对并上传公钥
+                val keyJson = EncryptionUtil.registerKey()
+                // 上传公钥信息
+                ApiFactory.API.api.updatePublicKeyInfo(keyJson)
+            }
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
             .compose(handleGlobalError(mContext))
             .autoDispose(AndroidLifecycleScopeProvider.from(this))
-            .subscribe{
-                Log.e("xxxx","登录成功："+json.toJSONString(it))
-                val loginInfo : LoginVO =  it
-                MMKV.defaultMMKV().encode("loginInfo",it)
-                MMKV.defaultMMKV().encode("accessToken", loginInfo.accessToken)
-                startActivity(Intent(this@LoginActivity, MainActivity::class.java))
-                finish()
+            .subscribe {
+               if(it){
+                   startActivity(Intent(mContext, MainActivity::class.java))
+                   finish()
+               }
             }
-    }
 
+    }
 
     /**
      * 验证用户名、密码是否为空
@@ -102,13 +129,18 @@ class LoginActivity : AppCompatActivity() {
     private fun validator(): Boolean {
         Log.e("xxx","----------验证")
         return when {
-            TextUtils.isEmpty(binding.etUserphone.text.toString()) -> {
-                binding.etUserphone.error = "手机号不能为空"
+            TextUtils.isEmpty(binding.etPhone.text.toString()) -> {
+                binding.etUsername.error = "手机号不能为空"
                 false
             }
 
-            !ValidateUtil.isValidChinesePhone(binding.etUserphone.text.toString())-> {
-                binding.etUserphone.error = "手机号格式错误"
+            !ValidateUtil.isValidChinesePhone(binding.etPhone.text.toString())-> {
+                binding.etPhone.error = "手机号格式错误"
+                false
+            }
+
+            TextUtils.isEmpty(binding.etUsername.text.toString()) -> {
+                binding.etUsername.error = "用户名不能为空"
                 false
             }
 
@@ -118,7 +150,7 @@ class LoginActivity : AppCompatActivity() {
             }
 
             else -> {
-                binding.btnNext.text = "登录中..."
+                binding.btnNext.text = "注册中..."
                 true
             }
         }

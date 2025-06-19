@@ -58,7 +58,7 @@ object EncryptionUtil {
      * {"identityKey":"BasPxq4TWBFD3tzMg2uou81fs5jY3Re2U+9Z73gB4jMF","registrationId":7736,"signedPreKeys":[{"publicKey":"BWCEIBQ9CADQYlLYPPHy9sc4qXu1FPLfol5+fe7S8iN7","keyId":3,"timestamp":1747905064570,"signature":"1jFq1HIbUDrv6w1lWT2mCJj2nW7WkCK4ibsnqMJM+46YOrdwrl/Zg99QykQc+lnk3393eGLhkQlJ3VlNw3T2DA=="}],"preKeys":[{"publicKey":"BSrHexwl3KpkdoOhDnJGORCQx1W2ZGddm+/Iru32v7oV","keyId":69}]}
      */
     @RequiresApi(api = Build.VERSION_CODES.O)
-    fun registerKey(): JSONObject? {
+    fun registerKey(): String {
         try {
             val currentUserId = MMKV.defaultMMKV().decodeInt("userId").toString()
             // 1. 创建持久化的 SignalProtocolStore
@@ -120,10 +120,10 @@ object EncryptionUtil {
             signedPreKeyInfo.put("timestamp", timestamp)
             signedPreKeysArray.add(signedPreKeyInfo)
             data.put("signedPreKeys", signedPreKeysArray)
-            return  data
+            return  json.toJSONString(data)
         } catch (e: Exception) {
             Log.e("SignalError", "Key generation failed", e)
-            return null
+            return ""
         }
     }
 
@@ -144,10 +144,10 @@ object EncryptionUtil {
             val friendAddress = SignalProtocolAddress(friendId, 1)
             // 4. 检查是否已存在会话
             if (store.containsSession(friendAddress)) {
-//                Log.d("SessionInit", "Session already exists for friend: $friendId")
-//                return
-                //先删除，再创建（好友密钥有更新时，拉取到最新好友信息后，这样操作）
-                store.deleteSession(friendAddress)
+                Log.d("SessionInit", "Session already exists for friend: $friendId")
+                return
+//                //TODO 先删除，再创建（好友密钥有更新时，拉取到最新好友信息后，这样操作）
+//                store.deleteSession(friendAddress)
             }
             // 5. 从新格式中获取密钥信息构建PreKeyBundle
             val identityKeyBytes = Base64.getDecoder().decode(preKeyBundleMaker.identityKey)

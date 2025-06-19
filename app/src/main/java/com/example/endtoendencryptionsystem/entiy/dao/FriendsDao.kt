@@ -14,7 +14,14 @@ interface FriendsDao {
      * id:当前用户的id
      */
     @Query("select * from im_friend where user_id=:id")
-    fun selectAllFriendsByUserId(id: Int): List<Friend>
+    fun selectAllFriendsByUserId(id: Int): Flowable<List<Friend>>
+
+    /**
+     * TODO 有点gay 临时处理
+     *
+     */
+    @Query("select * from im_friend where user_id=:id")
+    fun selectAllFriendsByUserId2(id: Int): List<Friend>
 
     /**
      * 查询某个好友的具体信息

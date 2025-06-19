@@ -59,7 +59,7 @@ public class AlertDialog extends Dialog {
     // 初始化View
     private void initalize() {
         LayoutInflater inflater = LayoutInflater.from(mContext);
-        View view = inflater.inflate(R.layout.dialog_alert, null);
+        View view = inflater.inflate(R.layout.dialog_alert_local, null);
         setContentView(view);
         initWindow();
 

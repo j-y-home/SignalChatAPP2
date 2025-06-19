@@ -16,7 +16,6 @@ import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import autodispose2.androidx.lifecycle.autoDispose
-import cn.pedant.SweetAlert.SweetAlertDialog
 import com.drake.statusbar.immersive
 import com.example.endtoendencryptionsystem.databinding.ActivityFriendInfoBinding
 import com.example.endtoendencryptionsystem.databinding.ActivityMainBinding
@@ -25,6 +24,8 @@ import com.example.endtoendencryptionsystem.enums.ConversationType
 import com.example.endtoendencryptionsystem.enums.MessageType
 import com.example.endtoendencryptionsystem.viewmodel.ChatViewModel
 import com.example.endtoendencryptionsystem.viewmodel.FriendViewModel
+import com.ruins.library.sweet.SweetAlertDialog
+import com.ruins.library.sweet.SweetAlertType
 
 
 import kotlin.getValue
@@ -63,17 +64,18 @@ class FriendInfoActivity : AppCompatActivity(){
 
         //发送消息
         binding.tvSendMsg.setOnClickListener {
+            Log.e("xxx","点击发送消息按钮")
             vmChat.getConversationByUserIdAndTargetIdAndType(friendInfo.friendId, ConversationType.PRIVATE.type)
         }
 
         //删除好友
         binding.tvDel.setOnClickListener {
-            SweetAlertDialog(this, SweetAlertDialog.WARNING_TYPE)
+            SweetAlertDialog(this, SweetAlertType.WARNING_TYPE)
                 .setContentText("您确定要删除该好友吗？")
                 .setConfirmText("确定")
                 .setConfirmClickListener {
                     viewModel.delFriend(friendInfo.friendId)
-                    it.dismiss()
+                    it.dismissWithAnimation()
                 }
                 .show()
         }
@@ -85,11 +87,11 @@ class FriendInfoActivity : AppCompatActivity(){
                 //刷新列表
                 viewModel.getGroupedFriendList()
             } else {
-                SweetAlertDialog(this, SweetAlertDialog.ERROR_TYPE)
+                SweetAlertDialog(this, SweetAlertType.ERROR_TYPE)
                     .setContentText("删除失败")
                     .setConfirmText("确定")
                     .setConfirmClickListener {
-                        it.dismiss()
+                        it.dismissWithAnimation()
                     }
                     .show()
             }

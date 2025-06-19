@@ -167,7 +167,6 @@ dependencies {
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.18.+")
     implementation("com.belerweb:pinyin4j:2.5.0")
 
-    implementation("cn.pedant.sweetalert:library:1.3")
 
 
 }
