@@ -166,7 +166,8 @@ dependencies {
     implementation("org.projectlombok:lombok:1.18.28")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.18.+")
     implementation("com.belerweb:pinyin4j:2.5.0")
+    implementation("com.github.Brioal:CircleHeadView:1.0")
 
-
+    implementation("com.github.bigdongdong:ChatView:1.1")
 
 }

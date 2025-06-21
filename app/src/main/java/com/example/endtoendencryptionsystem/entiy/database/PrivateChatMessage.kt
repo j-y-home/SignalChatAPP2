@@ -1,148 +1,40 @@
-package com.example.endtoendencryptionsystem.entiy.database;
+package com.example.endtoendencryptionsystem.entiy.database
 
-import androidx.annotation.NonNull;
-import androidx.room.Entity;
-import androidx.room.ForeignKey;
-import androidx.room.Index;
-import androidx.room.PrimaryKey;
+import androidx.room.Entity
+import androidx.room.ForeignKey
+import androidx.room.Index
+import androidx.room.PrimaryKey
+import com.chad.library.adapter.base.entity.MultiItemEntity
+import com.example.endtoendencryptionsystem.adapter.MessageAdapter
+import com.example.endtoendencryptionsystem.enums.MessageType
+import org.jetbrains.annotations.NotNull
 
-import com.chad.library.adapter.base.entity.MultiItemEntity;
-
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-
-@Entity(
-    tableName = "private_chat_message",
-    foreignKeys = @ForeignKey(
-        entity = ChatConversation.class,
-        parentColumns = "id",
-        childColumns = "conversationId",
-        onDelete = ForeignKey.CASCADE
-    ),
-    indices = {
-        @Index("conversationId"),
-        @Index("sendTime")
-    }
-)
-public class PrivateChatMessage implements MultiItemEntity {
+@Entity(tableName = "private_chat_message")
+class PrivateChatMessage : MultiItemEntity {
     @PrimaryKey
-    @NonNull
-    private String messageId;
-    @Nullable
-    private String tmpId;
-    @Nullable
-    private long conversationId;
-    @Nullable
-    private long sendId;
-    @Nullable
-    private long recvId;
-    @Nullable
-    private String content;
-    @Nullable
-    private long sendTime;
-    @Nullable
-    private boolean selfSend;
-    @Nullable
-    private int type;
-    @Nullable
-    private int status;
-    @Nullable
-    private String loadStatus;
+    var messageId: String = ""
+    var tmpId: String? = null
+    var conversationId: Long = 0
+    var sendId: Long = 0
+    var recvId: Long = 0
+    var content: String? = null
+    var sendTime: Long = 0
+    var isSelfSend: Boolean = false
+    var type: Int = 0
+    var status: Int = 0
+    var loadStatus: String? = null
 
-    public String getMessageId() {
-        return messageId;
-    }
+    override val itemType: Int
+        get() {
+            when (type) {
+                MessageType.TIP_TEXT.code, MessageType.TIP_TIME.code -> return MessageAdapter.MESSAGE_TYPE_SYSTEM
 
-    public void setMessageId(String messageId) {
-        this.messageId = messageId;
-    }
+                MessageType.TEXT.code -> return if (this.isSelfSend) MessageAdapter.MESSAGE_TYPE_SENT_TEXT else MessageAdapter.MESSAGE_TYPE_RECV_TEXT
 
-    public String getTmpId() {
-        return tmpId;
-    }
+                MessageType.IMAGE.code -> return if (this.isSelfSend) MessageAdapter.MESSAGE_TYPE_SENT_IMAGE else MessageAdapter.MESSAGE_TYPE_RECV_IMAGE
 
-    public void setTmpId(String tmpId) {
-        this.tmpId = tmpId;
-    }
-
-    public long getConversationId() {
-        return conversationId;
-    }
-
-    public void setConversationId(long conversationId) {
-        this.conversationId = conversationId;
-    }
-
-    public long getSendId() {
-        return sendId;
-    }
-
-    public void setSendId(long sendId) {
-        this.sendId = sendId;
-    }
-
-    public long getRecvId() {
-        return recvId;
-    }
-
-    public void setRecvId(long recvId) {
-        this.recvId = recvId;
-    }
-
-    public String getContent() {
-        return content;
-    }
-
-    public void setContent(String content) {
-        this.content = content;
-    }
-
-    public long getSendTime() {
-        return sendTime;
-    }
-
-    public void setSendTime(long sendTime) {
-        this.sendTime = sendTime;
-    }
-
-    public boolean isSelfSend() {
-        return selfSend;
-    }
-
-    public void setSelfSend(boolean selfSend) {
-        this.selfSend = selfSend;
-    }
-
-    public int getType() {
-        return type;
-    }
-
-    public void setType(int type) {
-        this.type = type;
-    }
-
-    public int getStatus() {
-        return status;
-    }
-
-    public void setStatus(int status) {
-        this.status = status;
-    }
-
-    public String getLoadStatus() {
-        return loadStatus;
-    }
-
-    public void setLoadStatus(String loadStatus) {
-        this.loadStatus = loadStatus;
-    }
-
-    @Override
-    public int getItemType() {
-         if(selfSend){
-             return 1;
-         }else{
-             return 0;
-         }
-    }
+                else ->                 // 可选：处理未知类型或抛异常
+                    return -1 // 或抛出异常表示不支持的消息类型
+            }
+        }
 }

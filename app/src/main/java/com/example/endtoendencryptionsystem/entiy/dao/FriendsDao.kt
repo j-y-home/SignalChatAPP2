@@ -31,6 +31,13 @@ interface FriendsDao {
     fun selectFriendsByFriendId(id: Long): Friend
 
     /**
+     * 查询某个好友的具体信息
+     * id:当前用户的id
+     */
+    @Query("select * from im_friend where friend_id=:id")
+    fun getFriendInfoById(id: Long): Flowable<Friend>
+
+    /**
      * 批量插入好友
      */
     @Insert(onConflict = OnConflictStrategy.REPLACE)

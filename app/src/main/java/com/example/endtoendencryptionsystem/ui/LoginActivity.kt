@@ -14,14 +14,15 @@ import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import autodispose2.androidx.lifecycle.AndroidLifecycleScopeProvider
 import autodispose2.androidx.lifecycle.autoDispose
 import autodispose2.autoDispose
 import com.drake.statusbar.immersive
 import com.example.endtoendencryptionsystem.databinding.ActivityLoginNamePwdBinding
+import com.example.endtoendencryptionsystem.entiy.dto.LoginDTO
 import com.example.endtoendencryptionsystem.entiy.vo.LoginVO
 import com.example.endtoendencryptionsystem.http.RxSchedulers
-import com.example.endtoendencryptionsystem.utils.SignalKeyManager
 import com.example.endtoendencryptionsystem.utils.ValidateUtil
 import com.example.endtoendencryptionsystem.utils.json
 import com.example.endtoendencryptionsystem.utils.toJSONString
@@ -31,11 +32,17 @@ import com.ruins.library.sweet.SweetAlertDialog
 import com.ruins.library.sweet.SweetAlertType
 import com.tencent.mmkv.MMKV
 import com.wumingtech.at.handler.handleGlobalError
+import com.wumingtech.at.http.ApiFactory
 import com.wumingtech.at.viewmodel.factory.SessionViewModelFactory
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.core.BackpressureStrategy
+import io.reactivex.rxjava3.core.Single
 import io.reactivex.rxjava3.functions.Predicate
 import io.reactivex.rxjava3.schedulers.Schedulers
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
 
 /**
@@ -61,38 +68,94 @@ class LoginActivity : AppCompatActivity() {
         binding.btnReg.setOnClickListener {
             startActivity(Intent(this@LoginActivity, RegisterActivity::class.java))
         }
-        binding.btnNext.clicks().toFlowable(BackpressureStrategy.ERROR)
-            .throttleFirst(1, TimeUnit.SECONDS)
-            .filter { validator() }
-            .subscribeOn(AndroidSchedulers.mainThread())
-            .observeOn(Schedulers.io())
-            .flatMap {
-                return@flatMap viewModel.createSession(
-                    binding.etUserphone.text.toString().trim(),
-                    binding.etPwd.text.toString().trim()
-                )
+        binding.btnNext.setOnClickListener {
+            if (validator()) {
+                lifecycleScope.launch(Dispatchers.IO) {
+                    try {
+                        // 1. 登录请求
+                        val loginVO = ApiFactory.API.api.login2(LoginDTO( binding.etUserphone.text.toString().trim(),
+                            binding.etPwd.text.toString().trim(), 1))
+
+                        // 2. 保存登录信息
+                        MMKV.defaultMMKV().apply {
+                            encode("loginInfo", loginVO)
+                            encode("accessToken", loginVO.accessToken)
+                        }
+
+                        // 2. 获取并保存个人信息
+                        val user = ApiFactory.API.api.getMyInfo()
+                        MMKV.defaultMMKV().encode("selfInfo", user)
+                        MMKV.defaultMMKV().encode("userId", user.id)
+                        MMKV.defaultMMKV().encode("userName", user.nickName)
+
+                        // 3. 注册 Signal 密钥
+                        val result = SignalKeyManager.registerNewKeysIfNecessary(loginVO.userId.toString())
+
+                        if (result.isNotEmpty()) {
+                            ApiFactory.API.api.updatePublicKeyInfo(result)
+                        }
+
+                        // 4. 跳转主界面
+                        withContext(Dispatchers.Main) {
+                            startActivity(Intent(mContext, MainActivity::class.java))
+                            finish()
+                        }
+
+                    } catch (e: Exception) {
+                        Log.e("LoginActivity", "登录失败：${e.message}")
+                        withContext(Dispatchers.Main) {
+                            Toast.makeText(mContext, "登录失败，请重试", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
             }
-            .compose(RxSchedulers.ioToMain())
-            .retry(Predicate {
-                binding.btnNext.text = "登   录"
-                SweetAlertDialog(mContext, SweetAlertType.ERROR_TYPE)
-                    .setContentText("$it 请联系客服")
-                    .setConfirmText("确认")
-                    .show()
-                return@Predicate true
-            })
-            .subscribeOn(Schedulers.io())
-            .observeOn(AndroidSchedulers.mainThread())
-            .compose(handleGlobalError(mContext))
-            .autoDispose(AndroidLifecycleScopeProvider.from(this))
-            .subscribe{
-                Log.e("xxxx","登录成功："+json.toJSONString(it))
-                val loginInfo : LoginVO =  it
-                MMKV.defaultMMKV().encode("loginInfo",it)
-                MMKV.defaultMMKV().encode("accessToken", loginInfo.accessToken)
-                startActivity(Intent(this@LoginActivity, MainActivity::class.java))
-                finish()
-            }
+        }
+//        binding.btnNext.clicks().toFlowable(BackpressureStrategy.ERROR)
+//            .throttleFirst(1, TimeUnit.SECONDS)
+//            .filter { validator() }
+//            .subscribeOn(AndroidSchedulers.mainThread())
+//            .observeOn(Schedulers.io())
+//            .flatMap {
+//                return@flatMap viewModel.createSession(
+//                    binding.etUserphone.text.toString().trim(),
+//                    binding.etPwd.text.toString().trim()
+//                )
+//            }
+//            .compose(RxSchedulers.ioToMain())
+//            .retry(Predicate {
+//                binding.btnNext.text = "登   录"
+//                SweetAlertDialog(mContext, SweetAlertType.ERROR_TYPE)
+//                    .setContentText("$it 请联系客服")
+//                    .setConfirmText("确认")
+//                    .show()
+//                return@Predicate true
+//            })
+//            .observeOn(Schedulers.io())
+//            .flatMap {
+//                // 保存登录信息
+//                MMKV.defaultMMKV().encode("loginInfo", it)
+//                MMKV.defaultMMKV().encode("accessToken", it.accessToken)
+//                MMKV.defaultMMKV().encode("userId", it.userId)
+//
+//                // 启动协程处理密钥注册逻辑
+//                Single.fromCallable {
+//                    runBlocking {
+//                        val userId = MMKV.defaultMMKV().getString("userId", "") ?: ""
+//                        SignalKeyManager.registerNewKeysIfNecessary(userId)
+//                    }
+//                }
+//            }
+//            .observeOn(AndroidSchedulers.mainThread())
+//            .compose(handleGlobalError(mContext))
+//            .autoDispose(AndroidLifecycleScopeProvider.from(this))
+//            .subscribe{
+//                Log.e("xxxx","登录成功："+json.toJSONString(it))
+//                val loginInfo : LoginVO =  it
+//                MMKV.defaultMMKV().encode("loginInfo",it)
+//                MMKV.defaultMMKV().encode("accessToken", loginInfo.accessToken)
+//                startActivity(Intent(this@LoginActivity, MainActivity::class.java))
+//                finish()
+//            }
     }
 
 

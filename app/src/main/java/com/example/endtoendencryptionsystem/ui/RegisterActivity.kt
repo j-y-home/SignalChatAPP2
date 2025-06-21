@@ -27,7 +27,6 @@ import com.example.endtoendencryptionsystem.entiy.dto.RegisterDTO
 import com.example.endtoendencryptionsystem.entiy.vo.LoginVO
 import com.example.endtoendencryptionsystem.http.RxSchedulers
 import com.example.endtoendencryptionsystem.utils.EncryptionUtil
-import com.example.endtoendencryptionsystem.utils.SignalKeyManager
 import com.example.endtoendencryptionsystem.utils.ValidateUtil
 import com.example.endtoendencryptionsystem.utils.json
 import com.example.endtoendencryptionsystem.utils.toJSONString
@@ -100,11 +99,12 @@ class RegisterActivity : AppCompatActivity() {
                 // 登录成功后获取个人信息
                 MMKV.defaultMMKV().encode("loginInfo", loginVO)
                 MMKV.defaultMMKV().encode("accessToken", loginVO.accessToken)
-                ApiFactory.API.api.getMyInfo()
+                ApiFactory.API.api.getMyInfo2()
             }.flatMap { userVO ->
                 //保存个人信息
                 MMKV.defaultMMKV().encode("selfInfo", userVO)
                 MMKV.defaultMMKV().encode("userId",userVO.id)
+                MMKV.defaultMMKV().encode("userName", userVO.nickName)
                 // 生成密钥对并上传公钥
                 val keyJson = EncryptionUtil.registerKey()
                 // 上传公钥信息

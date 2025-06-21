@@ -37,6 +37,7 @@ import com.drake.statusbar.immersive
 import com.example.endtoendencryptionsystem.R
 import com.example.endtoendencryptionsystem.adapter.EmojiAdapter
 import com.example.endtoendencryptionsystem.adapter.EmojiPagerAdapter
+import com.example.endtoendencryptionsystem.adapter.MessageAdapter
 import com.example.endtoendencryptionsystem.adapter.PrivateMsgAdapter
 import com.example.endtoendencryptionsystem.databinding.ActivityChatBinding
 import com.example.endtoendencryptionsystem.entiy.database.Friend
@@ -69,7 +70,7 @@ class PrivateChatMsgActivity : AppCompatActivity(){
     private val vmFriend by viewModels<FriendViewModel>()
     private lateinit var friendInfo: Friend
     private  var conversationId:Long = 0
-    private lateinit var adapter: PrivateMsgAdapter
+    private lateinit var adapter: MessageAdapter
     private var data = ArrayList<PrivateChatMessage>()
     private lateinit var mManager: InputMethodManager
     lateinit var permissions: Array<String>
@@ -119,7 +120,7 @@ class PrivateChatMsgActivity : AppCompatActivity(){
                 content = content,
                 type = MessageType.TEXT.code
             )
-            viewModel.sendPrivateMessage(privateMessageDTO)
+            viewModel.sendPrivateMessage(friendInfo.friendNickName.toString(),privateMessageDTO)
         }
 
 
@@ -151,7 +152,7 @@ class PrivateChatMsgActivity : AppCompatActivity(){
             startActivity(intent)
         }
 
-        adapter = PrivateMsgAdapter(data)
+        adapter = MessageAdapter(data,friendInfo)
         binding.rv.layoutManager = LinearLayoutManager(this)
         binding.rv.adapter = adapter
         adapter.addChildClickViewIds(R.id.iv_tou)
@@ -372,7 +373,7 @@ class PrivateChatMsgActivity : AppCompatActivity(){
         if(data.isEmpty()){
             vmFriend.getFriendById(friendInfo.friendId)
         }else{
-            viewModel.sendPrivateMessage(privateMessageDTO)
+            viewModel.sendPrivateMessage(friendInfo.friendNickName.toString(),privateMessageDTO)
         }
 
     }

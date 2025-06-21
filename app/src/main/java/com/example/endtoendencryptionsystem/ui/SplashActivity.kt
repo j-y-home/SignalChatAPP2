@@ -8,6 +8,7 @@ import android.os.Handler
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import autodispose2.androidx.lifecycle.autoDispose
 import com.drake.statusbar.immersive
 import com.example.endtoendencryptionsystem.databinding.ActivitySplashBinding
@@ -26,6 +27,9 @@ import decodeParcelableCompat
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.core.Flowable
 import io.reactivex.rxjava3.schedulers.Schedulers
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  6.19上午遇到的问题：以下逻辑需要完善
@@ -39,6 +43,7 @@ class SplashActivity : AppCompatActivity() {
     private lateinit var binding: ActivitySplashBinding
     private val mContext: Context = this@SplashActivity
 
+    @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivitySplashBinding.inflate(layoutInflater)
@@ -48,74 +53,126 @@ class SplashActivity : AppCompatActivity() {
         checkLoginStatus()
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     private fun checkLoginStatus() {
         val loginInfo: LoginVO? = MMKV.defaultMMKV().decodeParcelableCompat<LoginVO>("loginInfo")
         if (loginInfo != null && loginInfo.refreshToken!!.isNotEmpty()) {
             Log.e("xxx", "loginInfo:" + json.toJSONString(loginInfo))
             // 已登录，刷新token
-            refreshTokenAndGoToMain(loginInfo.refreshToken)
+           // refreshTokenAndGoToMain(loginInfo.refreshToken)
+            lifecycleScope.launch {
+                refreshTokenAndGoToMain2(loginInfo.refreshToken)
+            }
         } else {
             // 未登录，跳转到登录页
             startActivity(Intent(this@SplashActivity, LoginActivity::class.java))
         }
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
-    private fun refreshTokenAndGoToMain(refreshToken: String) {
-        ApiFactory.API.api.refreshToken(refreshToken)
-            .flatMap {
-                MMKV.defaultMMKV().encode("loginInfo", it)
-                MMKV.defaultMMKV().encode("accessToken", it.accessToken)
-                val fetchSelf = ApiFactory.API.api.getMyInfo().flatMap users@{
-                    //保存个人信息
-                    MMKV.defaultMMKV().encode("selfInfo", it)
-                    MMKV.defaultMMKV().encode("userId",it.id)
-                    return@users Flowable.just(true)
-                }.doOnError{
-                    Log.e("xxxx","同步个人异常："+it.message)
-                }
-//                val fetchFriends = ApiFactory.API.api.getFriends().flatMap friends@{
-//                    //保存好友信息
-//                    val friendRepository = FriendRepository(application)
-//                    var userIds = arrayListOf<Int>()
-//                    for (friendVO in it) {
-//                        friendRepository.saveAndUpdateSession(friendVO.toFriend())
-//                        userIds.add(friendVO.id.toInt())
-//                    }
-//                    //获取在线状态
-//                    val fetchOnlineStatus = ApiFactory.API.api.fetchOlineStatus(userIds.joinToString(separator = ","))
-//                        .flatMap onlineStatus@{
-//                            // todo: 保存好友在线状态
-//                            return@onlineStatus Flowable.just(true)
-//                        }.doOnError{
-//                            Log.e("xxxx","同步在线状态异常："+it.message)
-//                        }
-//                    return@friends fetchOnlineStatus
+//    @RequiresApi(Build.VERSION_CODES.O)
+//    private fun refreshTokenAndGoToMain(refreshToken: String) {
+//        ApiFactory.API.api.refreshToken(refreshToken)
+//            .flatMap {
+//                MMKV.defaultMMKV().encode("loginInfo", it)
+//                MMKV.defaultMMKV().encode("accessToken", it.accessToken)
+//                val fetchSelf = ApiFactory.API.api.getMyInfo().flatMap users@{
+//                    //保存个人信息
+//                    MMKV.defaultMMKV().encode("selfInfo", it)
+//                    MMKV.defaultMMKV().encode("userId",it.id)
+//                    return@users Flowable.just(true)
 //                }.doOnError{
-//                    Log.e("xxxx","同步好友异常："+it.message)
+//                    Log.e("xxxx","同步个人异常："+it.message)
 //                }
-                val fetchGroups = ApiFactory.API.api.getGroups().flatMap groups@{
-                    // todo: 保存群聊信息
-                    return@groups Flowable.just(true)
-                }.doOnError{
-                    Log.e("xxxx","同步群组异常："+it.message)
-                }
-                return@flatMap Flowable.zip(fetchSelf, fetchGroups) { f1, f2 ->
-                    if (f1 && f2 ) {
-                        return@zip true
-                    } else {
-                        Log.e("xxxx","同步数据异常")
-                        throw Throwable("同步数据异常")
-                    }
-                }
+////                val fetchFriends = ApiFactory.API.api.getFriends().flatMap friends@{
+////                    //保存好友信息
+////                    val friendRepository = FriendRepository(application)
+////                    var userIds = arrayListOf<Int>()
+////                    for (friendVO in it) {
+////                        friendRepository.saveAndUpdateSession(friendVO.toFriend())
+////                        userIds.add(friendVO.id.toInt())
+////                    }
+////                    //获取在线状态
+////                    val fetchOnlineStatus = ApiFactory.API.api.fetchOlineStatus(userIds.joinToString(separator = ","))
+////                        .flatMap onlineStatus@{
+////                            // todo: 保存好友在线状态
+////                            return@onlineStatus Flowable.just(true)
+////                        }.doOnError{
+////                            Log.e("xxxx","同步在线状态异常："+it.message)
+////                        }
+////                    return@friends fetchOnlineStatus
+////                }.doOnError{
+////                    Log.e("xxxx","同步好友异常："+it.message)
+////                }
+//                val fetchGroups = ApiFactory.API.api.getGroups().flatMap groups@{
+//                    // todo: 保存群聊信息
+//                    return@groups Flowable.just(true)
+//                }.doOnError{
+//                    Log.e("xxxx","同步群组异常："+it.message)
+//                }
+//                return@flatMap Flowable.zip(fetchSelf, fetchGroups) { f1, f2 ->
+//                    if (f1 && f2 ) {
+//                        return@zip true
+//                    } else {
+//                        Log.e("xxxx","同步数据异常")
+//                        throw Throwable("同步数据异常")
+//                    }
+//                }
+//            }.flatMap {
+//                if(it){
+//                    val userId = MMKV.defaultMMKV().decodeInt("userId")
+//                    val result = SignalKeyManager.registerNewKeysIfNecessary(userId)
+//                }
+//            }
+//            .subscribeOn(Schedulers.io())
+//            .observeOn(AndroidSchedulers.mainThread())
+//            .autoDispose(this)
+//            .subscribe({
+//                startActivity(Intent(this@SplashActivity, MainActivity::class.java))
+//                finish()
+//            }, {})
+//
+//    }
+
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    private suspend fun refreshTokenAndGoToMain2(refreshToken: String) {
+        try{
+            // 1. 刷新 Token
+            val refreshed = ApiFactory.API.api.refreshToken(refreshToken)
+            MMKV.defaultMMKV().encode("loginInfo", refreshed)
+            MMKV.defaultMMKV().encode("accessToken", refreshed.accessToken)
+
+            // 2. 获取并保存个人信息
+            val user = ApiFactory.API.api.getMyInfo()
+            MMKV.defaultMMKV().encode("selfInfo", user)
+            MMKV.defaultMMKV().encode("userId", user.id)
+            MMKV.defaultMMKV().encode("userName", user.nickName)
+
+            // 3. 获取并保存群组信息（可选）
+            val groups = ApiFactory.API.api.getGroups()
+            // todo: 保存群聊信息
+
+            // 4. 注册 Signal 密钥
+            val userId = MMKV.defaultMMKV().getLong("userId",0)
+            val result = SignalKeyManager.registerNewKeysIfNecessary(userId.toString())
+
+            if(result.isNotEmpty()){//需要注册新密钥
+                val updateResult = ApiFactory.API.api.updatePublicKeyInfo(result)
             }
-            .subscribeOn(Schedulers.io())
-            .observeOn(AndroidSchedulers.mainThread())
-            .autoDispose(this)
-            .subscribe({
+            // 5. 跳转主界面
+            withContext(Dispatchers.Main) {
                 startActivity(Intent(this@SplashActivity, MainActivity::class.java))
                 finish()
-            }, {})
+            }
+        }catch (e: Exception){
+            Log.e("SplashActivity", "初始化失败：${e.message}")
+            withContext(Dispatchers.Main) {
+                // 出现任何错误，跳回登录页
+                startActivity(Intent(this@SplashActivity, LoginActivity::class.java))
+                finish()
+            }
+        }
 
     }
+
 }

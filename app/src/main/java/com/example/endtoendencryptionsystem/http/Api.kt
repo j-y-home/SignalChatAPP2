@@ -21,6 +21,7 @@ import com.example.endtoendencryptionsystem.model.PreKeyBundleMaker
 
 import io.reactivex.rxjava3.core.Flowable
 import io.reactivex.rxjava3.core.Single
+import kotlinx.coroutines.flow.Flow
 import okhttp3.MultipartBody
 import retrofit2.http.*
 import java.util.Objects
@@ -43,10 +44,16 @@ interface Api {
     fun login(@Body body: LoginDTO): Flowable<LoginVO>
 
     /**
+     * 登录
+     */
+    @POST(value = "login")
+    suspend fun login2(@Body body: LoginDTO):LoginVO
+
+    /**
      * 刷新token
      */
     @PUT(value = "refreshToken")
-    fun refreshToken(@Header(value = "refreshToken") refreshToken : String): Flowable<LoginVO>
+    suspend fun refreshToken(@Header(value = "refreshToken") refreshToken : String): LoginVO
 
 
 
@@ -57,7 +64,12 @@ interface Api {
      * 获取自己的信息
      */
     @GET(value = "user/self")
-    fun getMyInfo() : Flowable<UserVO>
+    suspend fun getMyInfo() :UserVO
+    /**
+     * 获取自己的信息
+     */
+    @GET(value = "user/self")
+    fun getMyInfo2() : Flowable<UserVO>
 
     @PUT(value = "user/update")
     fun updateUserInfo(@Body body: LoginDTO)

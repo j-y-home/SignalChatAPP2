@@ -14,11 +14,11 @@ open class SessionRepository() {
         return ApiFactory.API.api.login(LoginDTO(username, password, 1))
     }
 
-    fun refreshToken(refreshToken: String): Flowable<LoginVO> {
-        return ApiFactory.API.api.refreshToken(refreshToken)
-    }
+//    fun refreshToken(refreshToken: String): Flowable<LoginVO> {
+//        return ApiFactory.API.api.refreshToken(refreshToken)
+//    }
 
-    fun getMyInfo(): Flowable<UserVO> {
-        return ApiFactory.API.api.getMyInfo()
-    }
+//    fun getMyInfo(): Flowable<UserVO> {
+//        return ApiFactory.API.api.getMyInfo()
+//    }
 }

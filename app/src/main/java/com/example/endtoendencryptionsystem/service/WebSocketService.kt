@@ -14,10 +14,12 @@ import android.os.Looper
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
+import autodispose2.autoDispose
 import com.alibaba.fastjson.JSONObject
 import com.example.endtoendencryptionsystem.ETEApplication
 //import com.example.endtoendencryptionsystem.MainActivity
 import com.example.endtoendencryptionsystem.R
+import com.example.endtoendencryptionsystem.entiy.dao.FriendsDao
 import com.example.endtoendencryptionsystem.entiy.database.Friend
 import com.example.endtoendencryptionsystem.entiy.vo.FriendVO
 import com.example.endtoendencryptionsystem.entiy.vo.PrivateMessageVO
@@ -25,6 +27,7 @@ import com.example.endtoendencryptionsystem.entiy.vo.WebsocketMsgVO
 import com.example.endtoendencryptionsystem.enums.ConversationType
 import com.example.endtoendencryptionsystem.enums.MessageType
 import com.example.endtoendencryptionsystem.http.Config
+import com.example.endtoendencryptionsystem.http.RxSchedulers
 import com.example.endtoendencryptionsystem.repository.AppDatabase
 import com.example.endtoendencryptionsystem.repository.ChatMsgRepository
 import com.example.endtoendencryptionsystem.repository.FriendRepository
@@ -40,6 +43,8 @@ import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.tencent.mmkv.MMKV
+import com.wumingtech.at.handler.handleGlobalError
+import io.reactivex.rxjava3.schedulers.Schedulers
 import java.net.URI
 import java.util.Date
 import java.util.Timer
@@ -92,6 +97,8 @@ class WebSocketService : Service() {
     private val binder = WebSocketBinder()
 
     private val friendRepository = FriendRepository(ETEApplication.getInstance()!!)
+    private var db = AppDatabase.getDatabase(ETEApplication.getInstance()!!)
+    private val friendsDao = db.friendDao()
 
     override fun onCreate() {
         super.onCreate()
@@ -494,7 +501,13 @@ class WebSocketService : Service() {
             }
             // 处理其他类型的消息...
             else -> {
-                insertPrivateMessage(msg)
+                val friend = friendsDao.selectFriendsByFriendId(friendId)
+                if(friend!=null){
+                    insertPrivateMessage(friend,msg)
+                }else{
+                    Log.d(TAG,"未找到好友信息")
+                }
+
             }
         }
 
@@ -506,7 +519,7 @@ class WebSocketService : Service() {
      * 插入私聊消息
      */
     @RequiresApi(Build.VERSION_CODES.O)
-    fun insertPrivateMessage(msg: PrivateMessageVO) {
+    fun insertPrivateMessage(friend:Friend,msg: PrivateMessageVO) {
         // 普通消息、提示消息、动作消息
         if (isNormalMessageType(msg.type) || isTipMessageType(msg.type) || isActionMessageType(msg.type)) {
             // 解密消息（如果是文本消息）
@@ -516,11 +529,11 @@ class WebSocketService : Service() {
                 var deMsg = EncryptionUtil.decryptPrivateMessage(msg.sendId.toString(), msg.content.toString())
                 msg.content = deMsg
                 val chatStore = ChatMsgRepository(application)
-                chatStore.saveChatConversation(msg, ConversationType.PRIVATE.type)
+                chatStore.saveChatConversation(friend.friendNickName.toString(),msg, ConversationType.PRIVATE.type)
             } else {//直接保存
                 Log.d(TAG,"收到其他类型的私聊消息："+msg.type+"||"+json.toJSONString(msg))
                 val chatStore = ChatMsgRepository(application)
-                chatStore.saveChatConversation(msg, ConversationType.PRIVATE.type)
+                chatStore.saveChatConversation(friend.friendNickName.toString(),msg, ConversationType.PRIVATE.type)
             }
         }
     }

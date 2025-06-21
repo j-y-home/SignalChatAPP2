@@ -1,10 +1,12 @@
 package com.example.endtoendencryptionsystem.adapter
 
 import android.widget.TextView
+import com.brioal.circlehead.CircleHead
 import com.chad.library.adapter.base.BaseMultiItemQuickAdapter
 import com.chad.library.adapter.base.viewholder.BaseViewHolder
 import com.example.endtoendencryptionsystem.R
 import com.example.endtoendencryptionsystem.entiy.FriendItem
+import com.example.endtoendencryptionsystem.widget.TextImageView
 
 class GroupedFriendAdapter(data: MutableList<FriendItem> = ArrayList()) :
     BaseMultiItemQuickAdapter<FriendItem, BaseViewHolder>(data) {
@@ -29,6 +31,10 @@ class GroupedFriendAdapter(data: MutableList<FriendItem> = ArrayList()) :
                 val friend = (item as FriendItem.FriendEntry).friend
                 val tvName = holder.getView<TextView>(R.id.contact_name)
                 tvName.text = friend.friendNickName
+
+                val ivTou = holder.getView<TextImageView>(R.id.iv_tou)
+                ivTou.setText(friend.friendNickName!!.substring(friend.friendNickName!!.length-1,friend.friendNickName!!.length))
+
             }
         }
     }

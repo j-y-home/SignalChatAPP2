@@ -31,6 +31,8 @@ import com.wumingtech.at.http.ApiFactory
 import io.dcloud.p.f
 import io.reactivex.rxjava3.core.BackpressureStrategy
 import io.reactivex.rxjava3.core.Flowable
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.reactivestreams.Publisher
 import org.whispersystems.libsignal.util.ByteUtil
 import kotlin.collections.component1
@@ -132,6 +134,10 @@ class FriendRepository(val app: Application) {
             friendsDao.updateFriend(friend)
             EncryptionUtil.initPrivateSession(friend.friendId.toString(), friend.preKeyBundleMaker.toString())
         }
+    }
+
+     fun getLocalFriendById(id: Long): Flowable<Friend>{
+         return friendsDao.getFriendInfoById(id)
     }
 
 

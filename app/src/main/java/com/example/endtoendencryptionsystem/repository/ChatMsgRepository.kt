@@ -10,10 +10,12 @@ import com.alibaba.fastjson.JSONObject
 import com.alibaba.fastjson.TypeReference
 import com.example.endtoendencryptionsystem.entiy.database.ChatConversation
 import com.example.endtoendencryptionsystem.entiy.database.ChatMetadata
+import com.example.endtoendencryptionsystem.entiy.database.Friend
 import com.example.endtoendencryptionsystem.entiy.database.Group
 import com.example.endtoendencryptionsystem.entiy.database.GroupChatMessage
 import com.example.endtoendencryptionsystem.entiy.database.PrivateChatMessage
 import com.example.endtoendencryptionsystem.entiy.dto.PrivateMessageDTO
+import com.example.endtoendencryptionsystem.entiy.vo.GroupMessageVO
 import com.example.endtoendencryptionsystem.entiy.vo.PrivateMessageVO
 import com.example.endtoendencryptionsystem.enums.ConversationType
 import com.example.endtoendencryptionsystem.enums.MessageStatus
@@ -25,14 +27,11 @@ import com.example.endtoendencryptionsystem.utils.isOnline
 import com.example.endtoendencryptionsystem.utils.json
 import com.example.endtoendencryptionsystem.utils.toJSONString
 import com.example.endtoendencryptionsystem.utils.toObject
-import com.example.endtoendencryptionsystem.utils.toPrivateChatMessage
 import com.tencent.mmkv.MMKV
 import com.wumingtech.at.handler.handleGlobalError
 import com.wumingtech.at.http.ApiFactory
 import io.reactivex.rxjava3.core.BackpressureStrategy
 import io.reactivex.rxjava3.core.Flowable
-import okhttp3.internal.userAgent
-import kotlin.text.toLong
 import kotlin.toString
 
 
@@ -97,7 +96,7 @@ class ChatMsgRepository(val app: Application) {
      * 3，保存原始消息到本地数据库
      */
     @RequiresApi(Build.VERSION_CODES.O)
-    fun sendPrivateMessage(body: PrivateMessageDTO): Flowable<Boolean>{
+    fun sendPrivateMessage(friendName:String,body: PrivateMessageDTO): Flowable<Boolean>{
         return if (app.isOnline()) {
             //先加密，再发送
             val origanlMsg = body.content
@@ -111,7 +110,7 @@ class ChatMsgRepository(val app: Application) {
                     .flatMap{
                         //保存原始消息到本地数据库
                         it.content = origanlMsg
-                        saveChatConversation(it, ConversationType.PRIVATE.type)
+                        saveChatConversation(friendName,it, ConversationType.PRIVATE.type)
                         return@flatMap Flowable.just(true)
                     }
             }else{
@@ -137,16 +136,13 @@ class ChatMsgRepository(val app: Application) {
      * sendNickName：对方昵称
      * lastSendTime：最新消息发送时间
      */
-    fun saveChatConversation(it:PrivateMessageVO,type:String){
+    fun saveChatConversation(showName:String,it:PrivateMessageVO,type:String){
         //1，判断会话是否存在
         var conversationId: Long = 0
         val userId:Long = MMKV.defaultMMKV().decodeInt("userId").toLong()
+        Log.e("xxx","userId:"+userId)
         var targetId = if(it.sendId == userId){it.recvId} else{it.sendId}
-        var sendNickName = if(it.sendId == userId){//TODO
-           "我"
-        }else{
-            "对方"
-        }
+
         val existingConversation: ChatConversation? = chatConversationDao.getConversation(userId, targetId, type.toString())
         if (existingConversation != null) {//更新会话
             //更新最新一条消息
@@ -157,9 +153,9 @@ class ChatMsgRepository(val app: Application) {
         } else {//创建会话
             val conversation = ChatConversation()
             conversation.userId = userId
-            conversation.sendNickName = sendNickName
             conversation.targetId = targetId
             conversation.type = type
+            conversation.showName = showName
             conversation.lastContent = it.content.toString()
             conversation.lastSendTime = it.sendTime.time
             try{
