@@ -73,7 +73,7 @@
                     android:paddingLeft="100dp"
                     android:hint="请输入手机号"
                     android:background="@null"
-                    android:textColorHint="@color/wechat_btn_green"
+                    android:textColorHint="@color/app_main_lg"
                     android:textSize="@dimen/common_item_text_size" />
             </RelativeLayout>
 

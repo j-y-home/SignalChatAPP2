@@ -81,6 +81,9 @@ interface Api {
     @PUT(value = "user/updatePublicKeyInfo")
     fun updatePublicKeyInfo(@Query(value = "preKeyInfo") preKeyInfo: String): Flowable<Boolean>
 
+    @PUT(value = "user/updatePublicKeyInfo")
+    suspend fun updatePublicKeyInfo2(@Query(value = "preKeyInfo") preKeyInfo: String):Boolean
+
 
     @GET(value = "/user/terminal/online")
     fun fetchOlineStatus(@Query(value = "userIds") userIds: String):Flowable<List<OnlineTerminalVO>>

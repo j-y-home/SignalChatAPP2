@@ -6,6 +6,7 @@ import com.chad.library.adapter.base.BaseMultiItemQuickAdapter
 import com.chad.library.adapter.base.viewholder.BaseViewHolder
 import com.example.endtoendencryptionsystem.R
 import com.example.endtoendencryptionsystem.entiy.FriendItem
+import com.example.endtoendencryptionsystem.widget.HeadImageView
 import com.example.endtoendencryptionsystem.widget.TextImageView
 
 class GroupedFriendAdapter(data: MutableList<FriendItem> = ArrayList()) :
@@ -32,9 +33,9 @@ class GroupedFriendAdapter(data: MutableList<FriendItem> = ArrayList()) :
                 val tvName = holder.getView<TextView>(R.id.contact_name)
                 tvName.text = friend.friendNickName
 
-                val ivTou = holder.getView<TextImageView>(R.id.iv_tou)
-                ivTou.setText(friend.friendNickName!!.substring(friend.friendNickName!!.length-1,friend.friendNickName!!.length))
-
+                val ivTou = holder.getView<HeadImageView>(R.id.iv_tou)
+                ivTou.setName(friend.friendNickName)
+                ivTou.setUrl(friend.friendHeadImage)
             }
         }
     }

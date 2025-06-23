@@ -7,7 +7,7 @@
     android:padding="10dp"
     android:layout_margin="10dp">
 
-    <com.example.endtoendencryptionsystem.widget.TextImageView
+    <com.example.endtoendencryptionsystem.widget.HeadImageView
         android:id="@+id/iv_tou"
         android:layout_width="45dp"
         android:layout_height="45dp"

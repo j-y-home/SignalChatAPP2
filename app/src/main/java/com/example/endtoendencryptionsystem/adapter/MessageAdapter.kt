@@ -23,6 +23,7 @@ import com.example.endtoendencryptionsystem.entiy.database.PrivateChatMessage
 import com.example.endtoendencryptionsystem.enums.MessageStatus
 import com.example.endtoendencryptionsystem.enums.MessageType
 import com.example.endtoendencryptionsystem.utils.TimestampUtil
+import com.example.endtoendencryptionsystem.widget.HeadImageView
 import com.example.endtoendencryptionsystem.widget.TextImageView
 import com.tencent.mmkv.MMKV
 import java.io.File
@@ -70,29 +71,32 @@ class MessageAdapter(data: MutableList<PrivateChatMessage>,friend: Friend) :
         holder.setText(R.id.tv_chat_content, message.content)
 
         // 头像
-        val ivTou = holder.getView<TextImageView>(R.id.sdv_avatar)
+        val ivTou = holder.getView<HeadImageView>(R.id.sdv_avatar)
         if (isSender) {
-            ivTou.setText(MMKV.defaultMMKV().decodeString("userName"))
+            ivTou.setName(MMKV.defaultMMKV().decodeString("userName"))
+            ivTou.setUrl("")
         } else {
-            ivTou.setText(mFriend.friendNickName)
+            ivTou.setName(mFriend.friendNickName)
+            ivTou.setUrl("")
         }
 
-        if(isSender){//只有发送者，还有这个布局
-            // 消息状态
-            val sendingPb = holder.getView<View>(R.id.pb_sending)
-            val statusIv = holder.getView<View>(R.id.iv_msg_status)
-            when (message.status) {
-                MessageStatus.SENDED.code -> {
-                    sendingPb.visibility = View.GONE
-                    statusIv.visibility = View.GONE
-                }
-                MessageStatus.UNSEND.code -> {
-                    sendingPb.visibility = View.GONE
-                    statusIv.visibility = View.VISIBLE
-                }
-                else -> {}
-            }
-        }
+        //TODO 消息状态 待定
+//        if(isSender){//只有发送者，还有这个布局
+//            // 消息状态
+//            val sendingPb = holder.getView<View>(R.id.pb_sending)
+//            val statusIv = holder.getView<View>(R.id.iv_msg_status)
+//            when (message.status) {
+//                MessageStatus.SENDED.code -> {
+//                    sendingPb.visibility = View.GONE
+//                    statusIv.visibility = View.GONE
+//                }
+//                MessageStatus.UNSEND.code -> {
+//                    sendingPb.visibility = View.GONE
+//                    statusIv.visibility = View.VISIBLE
+//                }
+//                else -> {}
+//            }
+//        }
 
 
         // 时间戳隐藏逻辑

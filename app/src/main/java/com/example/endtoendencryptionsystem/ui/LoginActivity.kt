@@ -92,7 +92,7 @@ class LoginActivity : AppCompatActivity() {
                         val result = SignalKeyManager.registerNewKeysIfNecessary(loginVO.userId.toString())
 
                         if (result.isNotEmpty()) {
-                            ApiFactory.API.api.updatePublicKeyInfo(result)
+                           ApiFactory.API.api.updatePublicKeyInfo2(result)
                         }
 
                         // 4. 跳转主界面
@@ -104,6 +104,7 @@ class LoginActivity : AppCompatActivity() {
                     } catch (e: Exception) {
                         Log.e("LoginActivity", "登录失败：${e.message}")
                         withContext(Dispatchers.Main) {
+                            binding.btnNext.text = "登   录"
                             Toast.makeText(mContext, "登录失败，请重试", Toast.LENGTH_SHORT).show()
                         }
                     }

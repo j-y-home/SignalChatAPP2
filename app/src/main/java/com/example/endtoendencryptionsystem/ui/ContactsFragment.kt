@@ -13,8 +13,6 @@ import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.example.endtoendencryptionsystem.R
-import com.example.endtoendencryptionsystem.adapter.FriendAdapter
 import com.example.endtoendencryptionsystem.adapter.GroupedFriendAdapter
 
 import com.example.endtoendencryptionsystem.databinding.FragmentContactsBinding
@@ -23,9 +21,7 @@ import com.example.endtoendencryptionsystem.entiy.database.Friend
 import com.example.endtoendencryptionsystem.entiy.database.User
 import com.example.endtoendencryptionsystem.ui.AddFriendsActivity
 import com.example.endtoendencryptionsystem.ui.FriendInfoActivity
-import com.example.endtoendencryptionsystem.utils.json
-import com.example.endtoendencryptionsystem.utils.toJSONString
-import com.example.endtoendencryptionsystem.viewmodel.ChatViewModel
+
 import com.example.endtoendencryptionsystem.viewmodel.FriendViewModel
 import java.util.Date
 

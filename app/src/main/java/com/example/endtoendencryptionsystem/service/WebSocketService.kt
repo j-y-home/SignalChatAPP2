@@ -125,6 +125,7 @@ class WebSocketService : Service() {
     }
 
     override fun onDestroy() {
+        //TODO 走了这里，是为什么，怎么处理
         Log.d(TAG, "WebSocket服务被销毁")
         closeWebSocket()
         super.onDestroy()
@@ -488,7 +489,7 @@ class WebSocketService : Service() {
                 Log.d(TAG,"收到的好友添加信息："+msg.content)
                 val friendVO = json.toObject<FriendVO>(msg.content.toString())
                 //保存好友信息并重置session
-                friendRepository.saveAndUpdateSession(friendVO.toFriend())
+                friendRepository.saveFriendAndInitSession(friendVO.toFriend())
             }
             MessageType.FRIEND_DEL.code -> {
                 /**
@@ -505,7 +506,7 @@ class WebSocketService : Service() {
                 if(friend!=null){
                     insertPrivateMessage(friend,msg)
                 }else{
-                    Log.d(TAG,"未找到好友信息")
+                    Log.d(TAG,"未找到好友信息"+friendId)
                 }
 
             }

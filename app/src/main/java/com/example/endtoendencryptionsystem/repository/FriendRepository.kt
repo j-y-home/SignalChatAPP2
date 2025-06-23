@@ -125,10 +125,24 @@ class FriendRepository(val app: Application) {
     }
 
     /**
-     * 保存好友信息，并重置session
+     * 添加新的好友：
+     * 保存好友信息，并initSession
      */
     @RequiresApi(Build.VERSION_CODES.O)
-    fun saveAndUpdateSession(friend: Friend){
+    fun saveFriendAndInitSession(friend: Friend){
+        db.runInTransaction {
+            //1,密钥信息变了，则重置session;2,没有对应的session，则重置session
+            friendsDao.addFriend(friend)
+            EncryptionUtil.initPrivateSession(friend.friendId.toString(), friend.preKeyBundleMaker.toString())
+        }
+    }
+
+    /**
+     *
+     * 更新好友信息，并重置Session
+     */
+    @RequiresApi(Build.VERSION_CODES.O)
+    fun updateFriendAndSession(friend: Friend){
         db.runInTransaction {
             //1,密钥信息变了，则重置session;2,没有对应的session，则重置session
             friendsDao.updateFriend(friend)
@@ -155,7 +169,7 @@ class FriendRepository(val app: Application) {
                         friendHeadImage = its.headImage,
                         preKeyBundleMaker = its.preKeyBundleMaker
                     )
-                    saveAndUpdateSession(friend)
+                    updateFriendAndSession(friend)
                     return@flatMap Flowable.just(true)
                 }
         } else {
